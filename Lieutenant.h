@@ -21,15 +21,32 @@ enum Attribution {
 
 class Lieutenant {
 public:
-    LieutenantID id;
+    LieutenantID myID;
     Loyalty loyalty;
     Attribution attribution;
 
+private:
+    int port;
+    int nTraitors;
+    int nLieutenants;
+    string *colleagues;
+
     map <int, list<Message>> messages;
 public:
-    Lieutenant(int id, Loyalty loyalty, Attribution attribution);
-    Lieutenant(int myID, int nTraitors);
+    Lieutenant(LieutenantID id, Loyalty loyalty, Attribution attribution);
+
+    Lieutenant(LieutenantID id, int nLieutenants, int nTraitors);
+
     void run();
+
+    void runCommon();
+
+    void runSource();
+
+private:
+    void findColleagues();
+
+    void sendMessage(string lieutenantAddress, Message message);
 };
 
 

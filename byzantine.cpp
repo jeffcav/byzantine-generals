@@ -5,12 +5,12 @@
 #include "Lieutenant.h"
 using namespace std;
 
-int main(){
+int main(int argc, char *argv[]){
     int nLieutenants = 3;
     int nTraitors = 1;
-    int myID = 2;
+    int myID = atoi(argv[1]);
 
-    Lieutenant me(myID, nTraitors);
+    Lieutenant me(LieutenantID(myID), nLieutenants, nTraitors);
     me.run();
 
     return 0;
