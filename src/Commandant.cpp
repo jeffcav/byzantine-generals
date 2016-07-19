@@ -22,11 +22,11 @@ void Commandant::discoverGeneralsAddresses()
 {
     this->generalAddresses = new string[this->numberOfGenerals];
 
-    for (int i = 1; i <= this->numberOfGenerals; i++) {
+    for (int host = 1; host < this->numberOfGenerals; host++) {
         stringstream address;
-        address << "10.0.0." << i;
+        address << "10.0.0." << host;
 
-        this->generalAddresses[i - 1] = address.str();
+        this->generalAddresses[host - 1] = address.str();
     }
 }
 
