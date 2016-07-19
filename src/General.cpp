@@ -2,7 +2,10 @@
 // Created by jeffrodrigo on 19/07/16.
 //
 
+#include <iostream>
 #include "General.h"
+
+using namespace std;
 
 General::General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGenerals, int nTraitors)
         : myID(GeneralIdentity(id)),
@@ -11,10 +14,14 @@ General::General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGe
           numberOfGenerals(nGenerals),
           numberOfTraitors(nTraitors)
 {
-
+    cout << "I am " <<
+            (this->loyalty == loyal? "a loyal " : "a traitor ") <<
+            (this->attribution == commanding? "commandant" : "lieutenant") <<
+            endl;
 }
 
-General::~General() {
+General::~General()
+{
     free(generalAddresses);
 }
 

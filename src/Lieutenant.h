@@ -9,26 +9,34 @@
 #include "GeneralIdentity.h"
 #include "General.h"
 #include <map>
-#include <list>
+#include <vector>
 
 using namespace std;
 
 class Lieutenant : public General {
+
 private:
-    map <int, list<Message>> messages;
+    map <int, vector<Message>> messages;
+    int sock;
 
 public:
     Lieutenant(int32_t, Loyalty, int, int);
-
     Lieutenant(int32_t, int, int);
-
     void run();
+    ~Lieutenant();
 
 protected:
     void discoverGeneralsAddresses();
 
 private:
-    void runCommon();
+    void communicate(int round);
+    void informLieutenants(Message msg);
+    void openSocket();
+
+    Message receiveMessage();
+    void saveReceivedMessage(int round, Message msg);
+    void sendMessage(string address, Message msg);
+
 };
 
 
