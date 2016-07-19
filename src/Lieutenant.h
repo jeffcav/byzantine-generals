@@ -1,52 +1,34 @@
 //
 // Created by jeffrodrigo on 18/07/16.
 //
+#ifndef BYZANTINE_GENERALS_LIEUTENANT_H
+#define BYZANTINE_GENERALS_LIEUTENANT_H
+
+
 #include "Message.h"
-#include "LieutenantID.h"
+#include "GeneralIdentity.h"
+#include "General.h"
 #include <map>
 #include <list>
 
 using namespace std;
 
-#ifndef BYZANTINE_GENERALS_LIEUTENANT_H
-#define BYZANTINE_GENERALS_LIEUTENANT_H
-
-enum Loyalty{
-    loyal, traitor
-};
-
-enum Attribution {
-    source, common
-};
-
-class Lieutenant {
-public:
-    LieutenantID myID;
-    Loyalty loyalty;
-    Attribution attribution;
-
+class Lieutenant : public General {
 private:
-    int port;
-    int nTraitors;
-    int nLieutenants;
-    string *colleagues;
-
     map <int, list<Message>> messages;
-public:
-    Lieutenant(LieutenantID id, Loyalty loyalty, Attribution attribution);
 
-    Lieutenant(LieutenantID id, int nLieutenants, int nTraitors);
+public:
+    Lieutenant(int32_t, Loyalty, int, int);
+
+    Lieutenant(int32_t, int, int);
 
     void run();
 
-    void runCommon();
-
-    void runSource();
+protected:
+    void discoverGeneralsAddresses();
 
 private:
-    void findColleagues();
-
-    void sendMessage(string lieutenantAddress, Message message);
+    void runCommon();
 };
 
 

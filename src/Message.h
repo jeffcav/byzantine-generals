@@ -3,7 +3,7 @@
 //
 
 #include <string>
-#include "LieutenantID.h"
+#include "GeneralIdentity.h"
 
 #ifndef BYZANTINE_GENERALS_MESSAGE_H
 #define BYZANTINE_GENERALS_MESSAGE_H
@@ -14,11 +14,11 @@ enum Command {
 
 class Message {
 public:
-    LieutenantID source;
+    GeneralIdentity source;
     char message;
 
 public:
-    Message(LieutenantID source, Command command);
+    Message(GeneralIdentity source, Command command);
     Message(char *buffer);
 
     void serialize(char *buffer);

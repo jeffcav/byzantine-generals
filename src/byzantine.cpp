@@ -3,15 +3,26 @@
 //
 #include <iostream>
 #include "Lieutenant.h"
+#include "Commandant.h"
+
 using namespace std;
 
-int main(int argc, char *argv[]){
-    int nLieutenants = 3;
-    int nTraitors = 1;
-    int myID = atoi(argv[1]);
+static General* chooseGeneral(int32_t id, int nGenerals, int nTraitors) {
+    if (id == 0)
+        return new Commandant(nGenerals, nTraitors);
+    return new Lieutenant(id, nGenerals, nTraitors);
 
-    Lieutenant me(LieutenantID(myID), nLieutenants, nTraitors);
-    me.run();
+}
+
+int main(int argc, char *argv[]){
+    int nGenerals = 3;
+    int nTraitors = 1;
+    int32_t myID = atoi(argv[1]);
+
+    General *me = chooseGeneral(myID, nGenerals, nTraitors);
+    me->run();
+
+    free(me);
 
     return 0;
 }

@@ -14,7 +14,7 @@ int Message::size() {
     return 6;
 }
 
-Message::Message(LieutenantID source, Command command) : source(source){
+Message::Message(GeneralIdentity source, Command command) : source(source){
 
     switch(command) {
         case attack:
