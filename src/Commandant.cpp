@@ -32,7 +32,7 @@ void Commandant::discoverGeneralsAddresses()
 
 void Commandant::run()
 {
-    for (int i = 0; i < this->numberOfGenerals; i++) {
+    for (int i = 0; i < this->numberOfGenerals - 1; i++) {
         Message message(this->myID, attack);
         sendMessage(this->generalAddresses[i], message);
     }

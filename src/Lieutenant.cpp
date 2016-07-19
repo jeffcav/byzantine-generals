@@ -88,6 +88,9 @@ void Lieutenant::informLieutenants(Message msg) {
     msg.source = this->myID;
 
     for (int i = 0; i < this->numberOfGenerals - 2; i++) {
+        if (this->isATraitor())
+            msg = sabotage(msg);
+
         sendMessage(generalAddresses[i], msg);
         cout << "Sent " << msg.message << " from " << msg.source.name << " to "<< generalAddresses[i] << endl;
     }
@@ -130,18 +133,14 @@ void Lieutenant::decide()
 {
     int numAttack = 0, numRetreat = 0;
 
-    for (int round = 0; round < this->numberOfTraitors; round++) {
+    for (int round = 0; round <= this->numberOfTraitors; round++) {
         int nMessages = this->messages[round].size();
         for (int msg = 0; msg < nMessages; msg++) {
-            switch(this->messages[round][msg].message) {
-                case 'A':
-                    numAttack++;
-                    break;
-                case 'R':
-                default:
-                    numRetreat++;
-                    break;
-            }
+
+            if (this->messages[round][msg].message == 'A')
+                numAttack++;
+            else
+                numRetreat++;
         }
     }
 
@@ -151,6 +150,19 @@ void Lieutenant::decide()
     else
         cout << "RETREAT\n";
 }
+
+Message Lieutenant::sabotage(Message msg) {
+    msg.message = 'R';
+    return msg;
+}
+
+bool Lieutenant::isATraitor() {
+    return this->loyalty==traitor;
+}
+
+
+
+
 
 
 

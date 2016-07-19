@@ -23,6 +23,7 @@ public:
     Lieutenant(int32_t, Loyalty, int, int);
     Lieutenant(int32_t, int, int);
     void run();
+    bool isATraitor();
     ~Lieutenant();
 
 protected:
@@ -38,6 +39,8 @@ private:
     void sendMessage(string address, Message msg);
 
     void decide();
+
+    Message sabotage(Message msg);
 };
 
 
