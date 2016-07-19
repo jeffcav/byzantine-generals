@@ -31,6 +31,8 @@ void Lieutenant::run()
     for (int round=0; round <= this->numberOfTraitors; round++) {
         communicate(round);
     }
+
+    decide();
 }
 
 
@@ -123,6 +125,37 @@ void Lieutenant::sendMessage(string address, Message msg) {
 Lieutenant::~Lieutenant() {
     close(this->sock);
 }
+
+void Lieutenant::decide()
+{
+    int numAttack = 0, numRetreat = 0;
+
+    for (int round = 0; round < this->numberOfTraitors; round++) {
+        int nMessages = this->messages[round].size();
+        for (int msg = 0; msg < nMessages; msg++) {
+            switch(this->messages[round][msg].message) {
+                case 'A':
+                    numAttack++;
+                    break;
+                case 'R':
+                default:
+                    numRetreat++;
+                    break;
+            }
+        }
+    }
+
+
+    if (numAttack >= numRetreat)
+        cout << "ATTACK\n";
+    else
+        cout << "RETREAT\n";
+}
+
+
+
+
+
 
 
 

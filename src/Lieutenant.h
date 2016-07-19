@@ -37,6 +37,7 @@ private:
     void saveReceivedMessage(int round, Message msg);
     void sendMessage(string address, Message msg);
 
+    void decide();
 };
 
 
