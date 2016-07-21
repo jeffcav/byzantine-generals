@@ -8,7 +8,6 @@
 #include <iostream>
 #include <unistd.h>
 #include "Commandant.h"
-#include "Message.h"
 
 using namespace std;
 
@@ -20,13 +19,11 @@ Commandant::Commandant(int nGenerals, int nTraitors) :
 
 void Commandant::discoverGeneralsAddresses()
 {
-    this->generalAddresses = new string[this->numberOfGenerals];
-
     for (int host = 1; host < this->numberOfGenerals; host++) {
         stringstream address;
         address << "10.0.0." << host;
 
-        this->generalAddresses[host - 1] = address.str();
+        this->generalAddresses.push_back(address.str());
     }
 }
 
@@ -42,7 +39,7 @@ void Commandant::sendMessage(string ltAddress, Message message)
 {
     char buffer[6];
     struct sockaddr_in saddr;
-    int len = sizeof(struct sockaddr_in);
+    socklen_t len = sizeof(struct sockaddr_in);
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     saddr.sin_port = htons(5000);
@@ -51,11 +48,11 @@ void Commandant::sendMessage(string ltAddress, Message message)
 
     bind(sock, (struct sockaddr*) &saddr, len);
     message.serialize(buffer);
-    sendto(sock, buffer, message.size(), 0, (struct sockaddr*) &saddr, len);
+    sendto(sock, buffer, (size_t) message.size(), 0, (struct sockaddr*) &saddr, len);
 
     close(sock);
 
-    cout << "Sent " << message.message << " to " << ltAddress << "\n";
+    cout << "Sent " << message.printCommand() << " to " << ltAddress << "\n";
 }
 
 

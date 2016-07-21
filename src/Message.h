@@ -5,17 +5,19 @@
 #include <string>
 #include "GeneralIdentity.h"
 
+using namespace std;
+
 #ifndef BYZANTINE_GENERALS_MESSAGE_H
 #define BYZANTINE_GENERALS_MESSAGE_H
 
 enum Command {
-    attack, retreat, any
+    attack, retreat
 };
 
 class Message {
 public:
     GeneralIdentity source;
-    char message;
+    Command command;
 
 public:
     Message(GeneralIdentity source, Command command);
@@ -24,6 +26,7 @@ public:
     void serialize(char *buffer);
 
     int size();
+    string printCommand();
 };
 
 

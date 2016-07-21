@@ -23,24 +23,27 @@ public:
     Lieutenant(int32_t, Loyalty, int, int);
     Lieutenant(int32_t, int, int);
     void run();
-    bool isATraitor();
+    bool isTraitor();
     ~Lieutenant();
 
 protected:
     void discoverGeneralsAddresses();
 
 private:
-    void communicate(int round);
-    void informLieutenants(Message msg);
     void openSocket();
 
+    vector<Message> receiveMessages(int nMessages);
     Message receiveMessage();
-    void saveReceivedMessage(int round, Message msg);
+    void saveReceivedMessages(int round, vector<Message> msgs);
+
     void sendMessage(string address, Message msg);
 
-    void decide();
+    vector<Message> OM(int nGenerals, int nTraitors, int k);
+    void actAsCommander(vector<Message> msgs);
+    Command majority(int k);
 
-    Message sabotage(Message msg);
+    void sabotage(Message *msg);
+    void setSender(Message *msg);
 };
 
 

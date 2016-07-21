@@ -6,6 +6,7 @@
 #define BYZANTINE_GENERALS_GENERAL_H
 
 #include <string>
+#include <vector>
 #include "GeneralIdentity.h"
 using namespace std;
 
@@ -29,10 +30,8 @@ public:
 
     virtual void run() {};
 
-    ~General();
-
 protected:
-    string *generalAddresses;
+    vector<string> generalAddresses;
     virtual void discoverGeneralsAddresses() {};
 
 };

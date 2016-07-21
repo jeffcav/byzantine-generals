@@ -28,29 +28,23 @@ void Lieutenant::run()
 {
     openSocket();
 
-    for (int round=0; round <= this->numberOfTraitors; round++) {
-        communicate(round);
-    }
-
-    decide();
+    OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
 }
 
 
 void Lieutenant::discoverGeneralsAddresses()
 {
-    this->generalAddresses = new string[this->numberOfGenerals - 2];
+    int numHosts = this->numberOfGenerals;
 
-    int nextAddress = 0;
-    for (int host = 1; nextAddress < (this->numberOfGenerals - 2); host++) {
+    for (int host = 1; host < numHosts; host++) {
         if (host == myID.name)
             continue;
 
         stringstream address;
         address << "10.0.0." << host;
+        this->generalAddresses.push_back(address.str());
 
-        this->generalAddresses[nextAddress] = address.str();
-        cout << "Adding " << generalAddresses[nextAddress] << endl;
-        nextAddress++;
+        cout << "Adding " << generalAddresses[this->generalAddresses.size() - 1] << endl;
     }
 }
 
@@ -61,39 +55,9 @@ Message Lieutenant::receiveMessage()
 
     Message message(buffer);
 
-    cout << "Received: " << message.message << " from lieutenant " << to_string(message.source.name) << endl;
+    cout << "Received: " << message.printCommand() << " from lieutenant " << to_string(message.source.name) << endl;
 
     return message;
-}
-
-
-
-void Lieutenant::communicate(int round)
-{
-    if (round > 0) {
-        for (int i = 0; i < messages[round-1].size(); i++) {
-            informLieutenants(messages[round-1][i]);
-        }
-    }
-
-    int nMsgs = pow(numberOfGenerals-2, round);
-
-    for (int i = 0; i < nMsgs; i++) {
-        Message msg = receiveMessage();
-        saveReceivedMessage(round, msg);
-    }
-}
-
-void Lieutenant::informLieutenants(Message msg) {
-    msg.source = this->myID;
-
-    for (int i = 0; i < this->numberOfGenerals - 2; i++) {
-        if (this->isATraitor())
-            msg = sabotage(msg);
-
-        sendMessage(generalAddresses[i], msg);
-        cout << "Sent " << msg.message << " from " << msg.source.name << " to "<< generalAddresses[i] << endl;
-    }
 }
 
 void Lieutenant::openSocket() {
@@ -108,8 +72,8 @@ void Lieutenant::openSocket() {
     bind(this->sock, (struct sockaddr*) &saddr, (socklen_t)  len);
 }
 
-void Lieutenant::saveReceivedMessage(int round, Message msg) {
-    this->messages[round].push_back(msg);
+void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs) {
+    this->messages[round] = msgs;
 }
 
 void Lieutenant::sendMessage(string address, Message msg) {
@@ -129,65 +93,80 @@ Lieutenant::~Lieutenant() {
     close(this->sock);
 }
 
-void Lieutenant::decide()
-{
-    int numAttack = 0, numRetreat = 0;
-
-    for (int round = 0; round <= this->numberOfTraitors; round++) {
-        int nMessages = this->messages[round].size();
-        for (int msg = 0; msg < nMessages; msg++) {
-
-            if (this->messages[round][msg].message == 'A')
-                numAttack++;
-            else
-                numRetreat++;
-        }
-    }
-
-
-    if (numAttack >= numRetreat)
-        cout << "ATTACK\n";
-    else
-        cout << "RETREAT\n";
+void Lieutenant::sabotage(Message *msg) {
+    msg->command = retreat;
 }
 
-Message Lieutenant::sabotage(Message msg) {
-    msg.message = 'R';
-    return msg;
-}
-
-bool Lieutenant::isATraitor() {
+bool Lieutenant::isTraitor() {
     return this->loyalty==traitor;
 }
 
+vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k) {
+    int nMsgs = pow(nGenerals - 2, nTraitors - k);
 
+    vector<Message> rcvMessages = receiveMessages(nMsgs);
+    saveReceivedMessages(k, rcvMessages);
 
+    sleep(1);
+    cout << endl;
 
+    if (k == 0)
+        return rcvMessages;
 
+    actAsCommander(rcvMessages);
+    rcvMessages = OM(nGenerals, nTraitors, k-1);
 
+    if (k == nTraitors) {
+        Command c = majority(k);
+        cout << (c==attack?"Attack!":"Retreat!") << endl;
+    }
 
+    return rcvMessages;
+}
 
+vector<Message> Lieutenant::receiveMessages(int nMessages) {
+    vector<Message> msgs;
 
+    for (int i = 0; i < nMessages; i++){
+        Message msg = receiveMessage();
+        msgs.push_back(msg);
+    }
 
+    return msgs;
+}
 
+Command Lieutenant::majority(int k) {
+    int nAttack = 0, nRetreat = 0;
 
+    for (int j = 0; j <= k; j++) {
+        vector<Message> msgs = messages[j];
+        for (int i = 0; i < msgs.size(); i++) {
+            if (msgs[i].command == attack)
+                nAttack++;
+            else
+                nRetreat++;
+        }
+    }
 
+    if (nAttack > nRetreat)
+        return attack;
+    return retreat;
 
+}
 
+void Lieutenant::setSender(Message *msg) {
+    msg->source = this->myID;
+}
 
+void Lieutenant::actAsCommander(vector<Message> msgs) {
+    for (int i = 0; i < this->generalAddresses.size(); i++) {
+        for (int j = 0; j < msgs.size(); j++) {
+            Message sndMsg = msgs[j];
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            setSender(&sndMsg);
+            if (this->isTraitor())
+                sabotage(&sndMsg);
+            sendMessage(generalAddresses[i], sndMsg);
+        }
+    }
+}

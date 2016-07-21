@@ -6,32 +6,31 @@
 #include "Message.h"
 
 void Message::serialize(char *buffer) {
-    memcpy(&buffer[0], &source, sizeof(int32_t));
-    memcpy(&buffer[4], &message, sizeof(char));
+    memcpy(&buffer[0], &source, 4);
+    memcpy(&buffer[4], &command, 4);
 }
 
 int Message::size() {
     return 6;
 }
 
-Message::Message(GeneralIdentity source, Command command) : source(source){
+Message::Message(GeneralIdentity source, Command command) : source(source), command(command){
 
-    switch(command) {
-        case attack:
-            this->message = 'A';
-            break;
-        case retreat:
-            this->message = 'R';
-            break;
-        case any:
-        default:
-            this->message = '?';
-    }
 }
 
 Message::Message(char *buffer) : source(0) {
-    memcpy(&source, &buffer[0], sizeof(int32_t));
-    memcpy(&message, &buffer[4], sizeof(char));
+    memcpy(&source, &buffer[0], 4);
+    memcpy(&command, &buffer[4], 4);
+}
+
+string Message::printCommand() {
+    switch(this->command) {
+        case attack:
+            return "Attack";
+        case retreat:
+        default:
+            return "Retreat";
+    }
 }
 
 

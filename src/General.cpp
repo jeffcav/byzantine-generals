@@ -20,10 +20,6 @@ General::General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGe
             endl;
 }
 
-General::~General()
-{
-    free(generalAddresses);
-}
 
 
 
