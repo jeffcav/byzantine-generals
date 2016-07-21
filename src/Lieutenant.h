@@ -17,6 +17,8 @@ class Lieutenant : public General {
 
 private:
     map <int, vector<Message>> messages;
+    vector<GeneralAddress> generals;
+
     int sock;
 
 public:
@@ -28,6 +30,7 @@ public:
 
 protected:
     void discoverGeneralsAddresses();
+    void discoverGenerals();
 
 private:
     void openSocket();

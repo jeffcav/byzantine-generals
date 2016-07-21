@@ -8,12 +8,14 @@
 #include <unistd.h>
 #include <iostream>
 #include <cmath>
+#include <cstring>
 #include "Lieutenant.h"
 
 Lieutenant::Lieutenant(int32_t id, Loyalty loyalty, int nGenerals, int nTraitors)
         : General(id, loyalty, lieutenant, nGenerals, nTraitors)
 {
-    discoverGeneralsAddresses();
+    //discoverGeneralsAddresses();
+    discoverGenerals();
 }
 
 Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
@@ -21,7 +23,8 @@ Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
                   id <= nTraitors? traitor : loyal,
                   lieutenant, nGenerals, nTraitors)
 {
-    discoverGeneralsAddresses();
+    //discoverGeneralsAddresses();
+    discoverGenerals();
 }
 
 void Lieutenant::run()
@@ -168,5 +171,61 @@ void Lieutenant::actAsCommander(vector<Message> msgs) {
                 sabotage(&sndMsg);
             sendMessage(generalAddresses[i], sndMsg);
         }
+    }
+}
+
+void Lieutenant::discoverGenerals() {
+    socklen_t len;
+    int serverSock, clientSock;
+    struct sockaddr_in saddr;
+    string prefix = "10.0.0.";
+
+    len = sizeof(saddr);
+    serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    memset(&saddr, 0 ,sizeof(struct sockaddr_in));
+    saddr.sin_port = htons(5000);
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = INADDR_ANY;
+    bind(serverSock, (struct sockaddr*) &saddr, len);
+
+    listen(serverSock, numberOfGenerals);
+
+    // Connect to other generals
+    for (int host = 1; host < myID.name; host++) {
+        struct GeneralAddress general;
+        struct sockaddr_in caddr;
+        string generalIP = prefix + to_string(host);
+
+        general.id = GeneralIdentity(host);
+        general.sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        generals.push_back(general);
+
+        memset(&caddr, 0 ,sizeof(struct sockaddr_in));
+        caddr.sin_port = htons(5000);
+        caddr.sin_family = AF_INET;
+        inet_aton(generalIP.c_str(), &caddr.sin_addr);
+        connect(general.sock, (struct sockaddr*) &caddr, len);
+
+        cout << "[LOG] connecting to " << generalIP << endl;
+
+        send(general.sock, (char*) &myID.name, 4, 0);
+    }
+
+    // wait for connections
+    for (int k = this->myID.name + 1; k < numberOfGenerals; k++) {
+        socklen_t len2;
+        uint32_t generalID;
+        GeneralAddress general;
+
+        clientSock = accept(serverSock, (struct sockaddr*) &saddr, &len2);
+        cout << "[LOG] a general connected ";
+
+        read(clientSock, (char*) &generalID, 4);
+
+        cout << "with id " << generalID << endl;
+
+        general.id = GeneralIdentity(generalID);
+        general.sock = clientSock;
+        generals.push_back(general);
     }
 }

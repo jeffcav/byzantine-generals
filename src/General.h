@@ -36,5 +36,9 @@ protected:
 
 };
 
+struct GeneralAddress{
+    GeneralIdentity id;
+    int sock;
+};
 
 #endif //BYZANTINE_GENERALS_GENERAL_H

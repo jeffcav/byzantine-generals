@@ -12,6 +12,7 @@ public:
 
 public:
     GeneralIdentity(int32_t name);
+    GeneralIdentity(){};
 };
 
 #endif //BYZANTINE_GENERALS_LIEUTENANTID_H
