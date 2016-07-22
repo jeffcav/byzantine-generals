@@ -10,7 +10,7 @@
 #include "GeneralIdentity.h"
 using namespace std;
 
-enum Loyalty{
+enum Loyalty {
     loyal, traitor
 };
 
@@ -28,15 +28,16 @@ public:
 
     General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGenerals, int nTraitors);
 
-    virtual void run() {};
+    virtual void run();
+    bool isTraitor();
 
 protected:
     vector<string> generalAddresses;
-    virtual void discoverGeneralsAddresses() {};
+    virtual void discoverGenerals();
 
 };
 
-class GeneralAddress{
+class GeneralAddress {
 public:
     GeneralIdentity id;
     int sock;

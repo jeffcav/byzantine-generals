@@ -23,7 +23,7 @@ Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
 
 void Lieutenant::run()
 {
-    openSocket();
+    //openSocket();
 
     OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
 }
@@ -45,10 +45,10 @@ void Lieutenant::discoverGeneralsAddresses()
     }
 }
 
-Message Lieutenant::receiveMessage()
+Message Lieutenant::receiveMessage(GeneralAddress general)
 {
     char buffer[6];
-    recv(this->sock, buffer, 6, 0);
+    recv(general.sock, buffer, 6, 0);
 
     Message message(buffer);
 
@@ -57,7 +57,9 @@ Message Lieutenant::receiveMessage()
     return message;
 }
 
-void Lieutenant::openSocket() {
+void Lieutenant::openSocket()
+{
+    /*
     struct sockaddr_in saddr;
     int len = sizeof(struct sockaddr_in);
 
@@ -67,38 +69,34 @@ void Lieutenant::openSocket() {
 
     this->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     bind(this->sock, (struct sockaddr*) &saddr, (socklen_t)  len);
+     */
 }
 
-void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs) {
+void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
+{
     this->messages[round] = msgs;
 }
 
-void Lieutenant::sendMessage(string address, Message msg) {
+void Lieutenant::sendMessage(GeneralAddress general, Message msg)
+{
     char buffer[msg.size()];
-    struct sockaddr_in saddr;
-    int len = sizeof(struct sockaddr_in);
-
-    saddr.sin_port = htons(5000);
-    saddr.sin_family = AF_INET;
-    inet_aton(address.c_str(), &saddr.sin_addr);
 
     msg.serialize(buffer);
-    sendto(this->sock, buffer, (size_t) msg.size(), 0, (struct sockaddr*) &saddr, (socklen_t) len);
+    send(general.sock, buffer, (size_t) msg.size(), 0);
 }
 
-Lieutenant::~Lieutenant() {
-    close(this->sock);
+Lieutenant::~Lieutenant()
+{
+    close(this->serverSock);
 }
 
-void Lieutenant::sabotage(Message *msg) {
+void Lieutenant::sabotage(Message *msg)
+{
     msg->command = retreat;
 }
 
-bool Lieutenant::isTraitor() {
-    return this->loyalty==traitor;
-}
-
-vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k) {
+vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
+{
     int nMsgs = pow(nGenerals - 2, nTraitors - k);
 
     vector<Message> rcvMessages = receiveMessages(nMsgs);
@@ -121,7 +119,8 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k) {
     return rcvMessages;
 }
 
-vector<Message> Lieutenant::receiveMessages(int nMessages) {
+vector<Message> Lieutenant::receiveMessages(int nMessages)
+{
     vector<Message> msgs;
 
     if (nMessages == 1) {
@@ -133,17 +132,19 @@ vector<Message> Lieutenant::receiveMessages(int nMessages) {
         return msgs;
     }
 
-    /* TODO: read from generals' sockets
     for (int i = 0; i < nMessages; i++) {
-        Message msg = receiveMessage();
+        // Receive one from each general j
+        int j = i%(numberOfGenerals-2);
+
+        Message msg = receiveMessage(generals[j]);
         msgs.push_back(msg);
     }
-     */
 
     return msgs;
 }
 
-Command Lieutenant::majority(int k) {
+Command Lieutenant::majority(int k)
+{
     int nAttack = 0, nRetreat = 0;
 
     for (int j = 0; j <= k; j++) {
@@ -162,34 +163,41 @@ Command Lieutenant::majority(int k) {
 
 }
 
-void Lieutenant::setSender(Message *msg) {
+void Lieutenant::setSender(Message *msg)
+{
     msg->source = this->myID;
 }
 
-void Lieutenant::actAsCommander(vector<Message> msgs) {
-
-    /* TODO: use generals' sockets
-    for (int i = 0; i < this->generalAddresses.size(); i++) {
+void Lieutenant::actAsCommander(vector<Message> msgs)
+{
+    for (int i = 0; i < this->generals.size(); i++) {
         for (int j = 0; j < msgs.size(); j++) {
             Message sndMsg = msgs[j];
 
             setSender(&sndMsg);
             if (this->isTraitor())
                 sabotage(&sndMsg);
-            sendMessage(generalAddresses[i], sndMsg);
+            sendMessage(generals[i], sndMsg);
         }
     }
-     */
 }
 
-void Lieutenant::discoverGenerals() {
+void Lieutenant::discoverGenerals()
+{
+    int option = 1;
     socklen_t slen, clen;
-    int serverSock, clientSock;
+    int clientSock;
     struct sockaddr_in saddr;
     string prefix = "10.0.0.";
 
     slen = sizeof(saddr);
     serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (setsockopt(serverSock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int)) == -1) {
+        perror("setsockopt");
+        exit(1);
+    }
+
     memset(&saddr, 0 ,sizeof(struct sockaddr_in));
     saddr.sin_port = htons(5000);
     saddr.sin_family = AF_INET;
@@ -238,7 +246,8 @@ void Lieutenant::discoverGenerals() {
     commanderSock = accept(serverSock, (struct sockaddr*) &saddr, &clen);
 }
 
-Message Lieutenant::receiveFromCommander() {
+Message Lieutenant::receiveFromCommander()
+{
     char buffer[6];
     read(commanderSock, buffer, 6);
 

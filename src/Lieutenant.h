@@ -19,14 +19,14 @@ private:
     map <int, vector<Message>> messages;
     vector<GeneralAddress> generals;
 
-    int sock;
+    int serverSock;
     int commanderSock;
 
 public:
     Lieutenant(int32_t, Loyalty, int, int);
     Lieutenant(int32_t, int, int);
+
     void run();
-    bool isTraitor();
     ~Lieutenant();
 
 protected:
@@ -37,10 +37,10 @@ private:
     void openSocket();
 
     vector<Message> receiveMessages(int nMessages);
-    Message receiveMessage();
+    Message receiveMessage(GeneralAddress general);
     void saveReceivedMessages(int round, vector<Message> msgs);
 
-    void sendMessage(string address, Message msg);
+    void sendMessage(GeneralAddress general, Message msg);
 
     vector<Message> OM(int nGenerals, int nTraitors, int k);
     void actAsCommander(vector<Message> msgs);

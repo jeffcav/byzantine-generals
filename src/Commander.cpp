@@ -15,10 +15,10 @@ using namespace std;
 Commander::Commander(int nGenerals, int nTraitors) :
         General(0, loyal, commanding, nGenerals, nTraitors)
 {
-    discoverGeneralsAddresses();
+    discoverGenerals();
 }
 
-void Commander::discoverGeneralsAddresses()
+void Commander::discoverGenerals()
 {
     socklen_t len = sizeof(struct sockaddr_in);
     string prefix = "10.0.0.";

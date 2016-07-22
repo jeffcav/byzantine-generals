@@ -19,7 +19,7 @@ public:
     void run();
 
 protected:
-    void discoverGeneralsAddresses();
+    void discoverGenerals();
 
 private:
     void sendMessage(GeneralAddress general, Message message);

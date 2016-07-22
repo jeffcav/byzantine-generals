@@ -15,11 +15,23 @@ General::General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGe
           numberOfTraitors(nTraitors)
 {
     cout << "I am " <<
-            (this->loyalty == loyal? "a loyal " : "a traitor ") <<
+            (this->loyalty == loyal? "a loyal " : "a traitorous ") <<
             (this->attribution == commanding? "commandant" : "lieutenant") <<
             endl;
 }
 
+bool General::isTraitor()
+{
+    return this->loyalty==traitor;
+}
+
+void General::run()
+{
+}
+
+void General::discoverGenerals()
+{
+}
 
 
 
