@@ -30,16 +30,18 @@ public:
     ~Lieutenant();
 
 protected:
-    void discoverGeneralsAddresses();
     void discoverGenerals();
 
 private:
-    void openSocket();
+    void openServerSocket();
+    void connectToGenerals();
+    void waitNewGeneralsConnections();
 
-    vector<Message> receiveMessages(int nMessages);
+    vector<Message> receiveMessages(int round);
     Message receiveMessage(GeneralAddress general);
     void saveReceivedMessages(int round, vector<Message> msgs);
 
+    void sendMessages(GeneralAddress general, vector<Message> msgs);
     void sendMessage(GeneralAddress general, Message msg);
 
     vector<Message> OM(int nGenerals, int nTraitors, int k);
@@ -48,9 +50,7 @@ private:
 
     void sabotage(Message *msg);
 
-    void setSender(Message *msg);
-
-    Message receiveFromCommander();
+    void prepareMessage(Message *msg);
 };
 
 

@@ -17,10 +17,11 @@ General::General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGe
     cout << "I am " <<
             (this->loyalty == loyal? "a loyal " : "a traitorous ") <<
             (this->attribution == commanding? "commandant" : "lieutenant") <<
+            endl <<
             endl;
 }
 
-bool General::isTraitor()
+bool General::isTraitorous()
 {
     return this->loyalty==traitor;
 }

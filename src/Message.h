@@ -22,6 +22,7 @@ public:
 public:
     Message(GeneralIdentity source, Command command);
     Message(char *buffer);
+    Message() : source(GeneralIdentity(0)){};
 
     void serialize(char *buffer);
 

@@ -23,26 +23,28 @@ Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
 
 void Lieutenant::run()
 {
-    //openSocket();
-
     OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
 }
 
-
-void Lieutenant::discoverGeneralsAddresses()
+vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 {
-    int numHosts = this->numberOfGenerals;
+    vector<Message> receivedMessages = receiveMessages(k);
 
-    for (int host = 1; host < numHosts; host++) {
-        if (host == myID.name)
-            continue;
+    sleep(1);
+    cout << endl;
 
-        stringstream address;
-        address << "10.0.0." << host;
-        this->generalAddresses.push_back(address.str());
+    if (k == 0)
+        return receivedMessages;
 
-        cout << "Adding " << generalAddresses[this->generalAddresses.size() - 1] << endl;
+    actAsCommander(receivedMessages);
+    receivedMessages = OM(nGenerals, nTraitors, k-1);
+
+    if (k == nTraitors) {
+        Command c = majority(k);
+        cout << (c==attack?"Attack!":"Retreat!") << endl;
     }
+
+    return receivedMessages;
 }
 
 Message Lieutenant::receiveMessage(GeneralAddress general)
@@ -52,24 +54,11 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
 
     Message message(buffer);
 
-    cout << "Received: " << message.printCommand() << " from lieutenant " << to_string(message.source.name) << endl;
+    cout << "Received: " << message.printCommand()
+         << " from lieutenant " << to_string(message.source.name)
+         << endl;
 
     return message;
-}
-
-void Lieutenant::openSocket()
-{
-    /*
-    struct sockaddr_in saddr;
-    int len = sizeof(struct sockaddr_in);
-
-    saddr.sin_port = htons(5000);
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = INADDR_ANY;
-
-    this->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    bind(this->sock, (struct sockaddr*) &saddr, (socklen_t)  len);
-     */
 }
 
 void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
@@ -77,68 +66,35 @@ void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
     this->messages[round] = msgs;
 }
 
-void Lieutenant::sendMessage(GeneralAddress general, Message msg)
-{
-    char buffer[msg.size()];
-
-    msg.serialize(buffer);
-    send(general.sock, buffer, (size_t) msg.size(), 0);
-}
-
 Lieutenant::~Lieutenant()
 {
     close(this->serverSock);
 }
 
-void Lieutenant::sabotage(Message *msg)
+vector<Message> Lieutenant::receiveMessages(int round)
 {
-    msg->command = retreat;
-}
-
-vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
-{
-    int nMsgs = pow(nGenerals - 2, nTraitors - k);
-
-    vector<Message> rcvMessages = receiveMessages(nMsgs);
-    saveReceivedMessages(k, rcvMessages);
-
-    sleep(1);
-    cout << endl;
-
-    if (k == 0)
-        return rcvMessages;
-
-    actAsCommander(rcvMessages);
-    rcvMessages = OM(nGenerals, nTraitors, k-1);
-
-    if (k == nTraitors) {
-        Command c = majority(k);
-        cout << (c==attack?"Attack!":"Retreat!") << endl;
-    }
-
-    return rcvMessages;
-}
-
-vector<Message> Lieutenant::receiveMessages(int nMessages)
-{
+    Message msg;
+    int nMessages;
     vector<Message> msgs;
+    GeneralAddress commander, *general;
 
-    if (nMessages == 1) {
-        Message msg = receiveFromCommander();
-        msgs.push_back(msg);
+    commander = GeneralAddress(GeneralIdentity(0),
+                               commanderSock);
 
-        cout << "[LOG] Received " << msg.printCommand() << " from commander\n";
-
-        return msgs;
-    }
+    nMessages = pow(this->numberOfGenerals - 2,
+                    this->numberOfTraitors - round);
 
     for (int i = 0; i < nMessages; i++) {
-        // Receive one from each general j
-        int j = i%(numberOfGenerals-2);
+        if (nMessages == 1)
+            general = &commander;
+        else
+            general = &generals[i % (numberOfGenerals - 2)];
 
-        Message msg = receiveMessage(generals[j]);
+        msg = receiveMessage(*general);
         msgs.push_back(msg);
     }
+
+    saveReceivedMessages(round, msgs);
 
     return msgs;
 }
@@ -147,9 +103,11 @@ Command Lieutenant::majority(int k)
 {
     int nAttack = 0, nRetreat = 0;
 
-    for (int j = 0; j <= k; j++) {
-        vector<Message> msgs = messages[j];
+    for (int round = 0; round <= k; round++) {
+        vector<Message> msgs = messages[round];
+
         for (int i = 0; i < msgs.size(); i++) {
+
             if (msgs[i].command == attack)
                 nAttack++;
             else
@@ -163,94 +121,141 @@ Command Lieutenant::majority(int k)
 
 }
 
-void Lieutenant::setSender(Message *msg)
-{
-    msg->source = this->myID;
-}
-
 void Lieutenant::actAsCommander(vector<Message> msgs)
 {
     for (int i = 0; i < this->generals.size(); i++) {
-        for (int j = 0; j < msgs.size(); j++) {
-            Message sndMsg = msgs[j];
-
-            setSender(&sndMsg);
-            if (this->isTraitor())
-                sabotage(&sndMsg);
-            sendMessage(generals[i], sndMsg);
-        }
+        sendMessages(generals[i], msgs);
     }
+}
+
+void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs) {
+    Message sndMsg;
+    for (int i = 0; i < msgs.size(); i++) {
+        sndMsg = msgs[i];
+
+        prepareMessage(&sndMsg);
+        sendMessage(general, sndMsg);
+    }
+}
+
+void Lieutenant::prepareMessage(Message *msg)
+{
+    msg->source = this->myID;
+
+    if (this->isTraitorous())
+        sabotage(msg);
+}
+
+void Lieutenant::sabotage(Message *msg)
+{
+    msg->command = retreat;
+}
+
+void Lieutenant::sendMessage(GeneralAddress general, Message msg)
+{
+    char buffer[msg.size()];
+    msg.serialize(buffer);
+    send(general.sock, buffer, (size_t) msg.size(), 0);
+}
+
+
+static struct sockaddr_in buildSockAddr(string *ip, int port)
+{
+    struct sockaddr_in addr;
+
+    memset(&addr, 0 ,sizeof(struct sockaddr_in));
+    addr.sin_port = htons(port);
+    addr.sin_family = AF_INET;
+
+    if (ip)
+        inet_aton(ip->c_str(), &addr.sin_addr);
+    else
+        addr.sin_addr.s_addr = INADDR_ANY;
+
+    return addr;
 }
 
 void Lieutenant::discoverGenerals()
 {
-    int option = 1;
-    socklen_t slen, clen;
-    int clientSock;
-    struct sockaddr_in saddr;
-    string prefix = "10.0.0.";
+    openServerSocket();
 
-    slen = sizeof(saddr);
-    serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    connectToGenerals();
 
-    if (setsockopt(serverSock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int)) == -1) {
+    waitNewGeneralsConnections();
+}
+
+void Lieutenant::openServerSocket()
+{
+    int option;
+    socklen_t len;
+    struct sockaddr_in addr;
+
+    option = 1;
+    len = sizeof(addr);
+    this->serverSock = socket(AF_INET,
+                              SOCK_STREAM,
+                              IPPROTO_TCP);
+
+    if (setsockopt(this->serverSock,
+                   SOL_SOCKET,
+                   SO_REUSEADDR,
+                   &option,
+                   sizeof(int)) == -1) {
         perror("setsockopt");
         exit(1);
     }
 
-    memset(&saddr, 0 ,sizeof(struct sockaddr_in));
-    saddr.sin_port = htons(5000);
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = INADDR_ANY;
-    bind(serverSock, (struct sockaddr*) &saddr, slen);
+    addr = buildSockAddr(NULL, 5000);
+    bind(serverSock, (struct sockaddr*) &addr, len);
 
-    listen(serverSock, numberOfGenerals);
+    listen(this->serverSock, this->numberOfGenerals);
+}
 
-    // Connect to other generals
-    for (int host = 1; host < myID.name; host++) {
-        struct GeneralAddress general;
-        struct sockaddr_in caddr;
-        string generalIP = prefix + to_string(host);
+void Lieutenant::connectToGenerals() {
+    int sock;
+    socklen_t len;
+    string ip, prefix;
+    struct sockaddr_in addr;
 
-        general.id = GeneralIdentity(host);
-        general.sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        generals.push_back(general);
+    prefix = "10.0.0.";
+    len = sizeof(struct sockaddr_in);
 
-        memset(&caddr, 0 ,sizeof(struct sockaddr_in));
-        caddr.sin_port = htons(5000);
-        caddr.sin_family = AF_INET;
-        inet_aton(generalIP.c_str(), &caddr.sin_addr);
-        connect(general.sock, (struct sockaddr*) &caddr, slen);
+    for (int host = 1; host < this->myID.name; host++) {
+        ip = prefix + to_string(host);
 
-        cout << "Connecting to " << generalIP << endl;
+        sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        addr = buildSockAddr(&ip, 5000);
+        connect(sock, (struct sockaddr*) &addr, len);
+        send(sock, (char*) &myID.name, 4, 0);
 
-        send(general.sock, (char*) &myID.name, 4, 0);
+        GeneralAddress newGeneral(GeneralIdentity(host), sock);
+        generals.push_back(newGeneral);
+
+        cout << "Connection to " << ip << endl;
     }
+}
 
-    // wait for connections
-    for (int k = this->myID.name + 1; k < numberOfGenerals; k++) {
-        uint32_t generalID;
-        GeneralAddress general;
+void Lieutenant::waitNewGeneralsConnections() {
+    int clientSock;
+    string prefix;
+    socklen_t len;
+    uint32_t generalID;
+    struct sockaddr_in addr;
 
-        clientSock = accept(serverSock, (struct sockaddr*) &saddr, &clen);
+    prefix = "10.0.0.";
+
+    // Lieutenant Generals
+    for (int i = this->myID.name + 1; i < numberOfGenerals; i++) {
+        clientSock = accept(serverSock, (struct sockaddr*) &addr, &len);
         read(clientSock, (char*) &generalID, 4);
 
-        cout << "Connected to " << prefix << generalID << endl;
+        GeneralAddress newGeneral(GeneralIdentity(generalID), clientSock);
+        generals.push_back(newGeneral);
 
-        general.id = GeneralIdentity(generalID);
-        general.sock = clientSock;
-        generals.push_back(general);
+        cout << "Connection from " << prefix << generalID << endl;
     }
 
-    // Wait for commander
-    commanderSock = accept(serverSock, (struct sockaddr*) &saddr, &clen);
+    // Commanding General
+    commanderSock = accept(serverSock, (struct sockaddr*) &addr, &len);
 }
 
-Message Lieutenant::receiveFromCommander()
-{
-    char buffer[6];
-    read(commanderSock, buffer, 6);
-
-    Message msg(buffer);
-    return msg;
-}

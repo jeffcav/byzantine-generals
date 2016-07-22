@@ -29,10 +29,9 @@ public:
     General(int32_t id, Loyalty loyalty1, Attribution attribution1, int nGenerals, int nTraitors);
 
     virtual void run();
-    bool isTraitor();
+    bool isTraitorous();
 
 protected:
-    vector<string> generalAddresses;
     virtual void discoverGenerals();
 
 };
@@ -43,6 +42,7 @@ public:
     int sock;
 
     GeneralAddress():id(GeneralIdentity(0)), sock(0){};
+    GeneralAddress(GeneralIdentity id, int sock) : id(id), sock(sock){}
 };
 
 #endif //BYZANTINE_GENERALS_GENERAL_H
