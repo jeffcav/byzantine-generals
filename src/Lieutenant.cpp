@@ -14,18 +14,12 @@
 Lieutenant::Lieutenant(int32_t id, Loyalty loyalty, int nGenerals, int nTraitors)
         : General(id, loyalty, lieutenant, nGenerals, nTraitors)
 {
-    //discoverGeneralsAddresses();
     discoverGenerals();
 }
 
 Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
-        : General(id,
-                  id <= nTraitors? traitor : loyal,
-                  lieutenant, nGenerals, nTraitors)
-{
-    //discoverGeneralsAddresses();
-    discoverGenerals();
-}
+        : Lieutenant(id, id <= nTraitors? traitor : loyal, nGenerals, nTraitors)
+{ }
 
 void Lieutenant::run()
 {
@@ -130,10 +124,21 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k) {
 vector<Message> Lieutenant::receiveMessages(int nMessages) {
     vector<Message> msgs;
 
-    for (int i = 0; i < nMessages; i++){
+    if (nMessages == 1) {
+        Message msg = receiveFromCommander();
+        msgs.push_back(msg);
+
+        cout << "[LOG] Received " << msg.printCommand() << " from commander\n";
+
+        return msgs;
+    }
+
+    /* TODO: read from generals' sockets
+    for (int i = 0; i < nMessages; i++) {
         Message msg = receiveMessage();
         msgs.push_back(msg);
     }
+     */
 
     return msgs;
 }
@@ -162,6 +167,8 @@ void Lieutenant::setSender(Message *msg) {
 }
 
 void Lieutenant::actAsCommander(vector<Message> msgs) {
+
+    /* TODO: use generals' sockets
     for (int i = 0; i < this->generalAddresses.size(); i++) {
         for (int j = 0; j < msgs.size(); j++) {
             Message sndMsg = msgs[j];
@@ -172,21 +179,22 @@ void Lieutenant::actAsCommander(vector<Message> msgs) {
             sendMessage(generalAddresses[i], sndMsg);
         }
     }
+     */
 }
 
 void Lieutenant::discoverGenerals() {
-    socklen_t len;
+    socklen_t slen, clen;
     int serverSock, clientSock;
     struct sockaddr_in saddr;
     string prefix = "10.0.0.";
 
-    len = sizeof(saddr);
+    slen = sizeof(saddr);
     serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     memset(&saddr, 0 ,sizeof(struct sockaddr_in));
     saddr.sin_port = htons(5000);
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    bind(serverSock, (struct sockaddr*) &saddr, len);
+    bind(serverSock, (struct sockaddr*) &saddr, slen);
 
     listen(serverSock, numberOfGenerals);
 
@@ -204,28 +212,36 @@ void Lieutenant::discoverGenerals() {
         caddr.sin_port = htons(5000);
         caddr.sin_family = AF_INET;
         inet_aton(generalIP.c_str(), &caddr.sin_addr);
-        connect(general.sock, (struct sockaddr*) &caddr, len);
+        connect(general.sock, (struct sockaddr*) &caddr, slen);
 
-        cout << "[LOG] connecting to " << generalIP << endl;
+        cout << "Connecting to " << generalIP << endl;
 
         send(general.sock, (char*) &myID.name, 4, 0);
     }
 
     // wait for connections
     for (int k = this->myID.name + 1; k < numberOfGenerals; k++) {
-        socklen_t len2;
         uint32_t generalID;
         GeneralAddress general;
 
-        clientSock = accept(serverSock, (struct sockaddr*) &saddr, &len2);
-        cout << "[LOG] a general connected ";
-
+        clientSock = accept(serverSock, (struct sockaddr*) &saddr, &clen);
         read(clientSock, (char*) &generalID, 4);
 
-        cout << "with id " << generalID << endl;
+        cout << "Connected to " << prefix << generalID << endl;
 
         general.id = GeneralIdentity(generalID);
         general.sock = clientSock;
         generals.push_back(general);
     }
+
+    // Wait for commander
+    commanderSock = accept(serverSock, (struct sockaddr*) &saddr, &clen);
+}
+
+Message Lieutenant::receiveFromCommander() {
+    char buffer[6];
+    read(commanderSock, buffer, 6);
+
+    Message msg(buffer);
+    return msg;
 }

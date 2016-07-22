@@ -9,9 +9,12 @@
 #include "General.h"
 #include "Message.h"
 
-class Commandant : public General{
+class Commander : public General{
 public:
-    Commandant(int nGenerals, int nTraitors);
+    vector<GeneralAddress> generals;
+
+
+    Commander(int nGenerals, int nTraitors);
 
     void run();
 
@@ -19,7 +22,7 @@ protected:
     void discoverGeneralsAddresses();
 
 private:
-    void sendMessage(string ltAddress, Message message);
+    void sendMessage(GeneralAddress general, Message message);
 };
 
 

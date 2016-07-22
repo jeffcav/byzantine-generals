@@ -36,9 +36,12 @@ protected:
 
 };
 
-struct GeneralAddress{
+class GeneralAddress{
+public:
     GeneralIdentity id;
     int sock;
+
+    GeneralAddress():id(GeneralIdentity(0)), sock(0){};
 };
 
 #endif //BYZANTINE_GENERALS_GENERAL_H

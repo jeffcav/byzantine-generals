@@ -20,6 +20,7 @@ private:
     vector<GeneralAddress> generals;
 
     int sock;
+    int commanderSock;
 
 public:
     Lieutenant(int32_t, Loyalty, int, int);
@@ -46,7 +47,10 @@ private:
     Command majority(int k);
 
     void sabotage(Message *msg);
+
     void setSender(Message *msg);
+
+    Message receiveFromCommander();
 };
 
 

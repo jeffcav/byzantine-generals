@@ -3,14 +3,14 @@
 //
 #include <iostream>
 #include "Lieutenant.h"
-#include "Commandant.h"
+#include "Commander.h"
 
 using namespace std;
 
 static General* chooseGeneral(int32_t id, int nGenerals, int nTraitors)
 {
     if (id == 0)
-        return new Commandant(nGenerals, nTraitors);
+        return new Commander(nGenerals, nTraitors);
     return new Lieutenant(id, nGenerals, nTraitors);
 
 }
