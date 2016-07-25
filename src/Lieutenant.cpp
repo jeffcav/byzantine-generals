@@ -245,9 +245,14 @@ void Lieutenant::waitNewGeneralsConnections() {
     prefix = "10.0.0.";
 
     // Lieutenant Generals
-    for (int i = this->myID.name + 1; i < numberOfGenerals; i++) {
+    for (int i = this->myID.name + 1; i <= numberOfGenerals; i++) {
         clientSock = accept(serverSock, (struct sockaddr*) &addr, &len);
         read(clientSock, (char*) &generalID, 4);
+
+        if (generalID == 0) {
+            commanderSock = clientSock;
+            continue;
+        }
 
         GeneralAddress newGeneral(GeneralIdentity(generalID), clientSock);
         generals.push_back(newGeneral);
@@ -256,6 +261,6 @@ void Lieutenant::waitNewGeneralsConnections() {
     }
 
     // Commanding General
-    commanderSock = accept(serverSock, (struct sockaddr*) &addr, &len);
+    //commanderSock = accept(serverSock, (struct sockaddr*) &addr, &len);
 }
 
