@@ -32,6 +32,7 @@ void Commander::discoverGenerals()
         struct GeneralAddress general;
         struct sockaddr_in caddr;
 
+
         if (!BYZ_RUNLOCAL)
             ip = prefix + to_string(host);
 
@@ -41,7 +42,7 @@ void Commander::discoverGenerals()
 
         memset(&caddr, 0 ,sizeof(struct sockaddr_in));
 
-        int port = 5000 + host;
+        int port = 15000 + host;
         caddr.sin_port = htons(port);
         caddr.sin_family = AF_INET;
 

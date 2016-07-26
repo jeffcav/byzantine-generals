@@ -71,4 +71,4 @@ def run_environment(n_generals, n_traitors):
 if __name__ == '__main__':
     # Tell mininet to print useful information
     setLogLevel('info')
-    run_environment(3, 1)
+    run_environment(4, 2)

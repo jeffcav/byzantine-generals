@@ -21,20 +21,27 @@ Lieutenant::Lieutenant(int32_t id, Loyalty loyalty, int nGenerals, int nTraitors
 
 Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
         : Lieutenant(id, id <= nTraitors? traitor : loyal, nGenerals, nTraitors)
-{ }
+{
+}
+
+Lieutenant::~Lieutenant()
+{
+    close(serverSock);
+
+    for (int i = 0; i < generals.size(); i++)
+        close (generals[i].sock);
+
+    close(commanderSock);
+}
 
 void Lieutenant::run()
 {
-    cout << "starting algorithm \n";
-
     OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
 }
 
 vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 {
     vector<Message> receivedMessages = receiveMessages(k);
-
-    cout << "received messages" << endl;
 
     sleep(1);
     cout << endl;
@@ -55,6 +62,7 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 
 Message Lieutenant::receiveMessage(GeneralAddress general)
 {
+    int retval;
     size_t count;
     char buffer[MSG_MAXBUFLEN];
     uint16_t pathlen;
@@ -68,18 +76,18 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
     FD_ZERO(&fds);
     FD_SET(general.sock, &fds);
 
-    if (select(general.sock+1, &fds, NULL, NULL, &tv) < 1)
+    retval = select(general.sock+1, &fds, NULL, NULL, &tv);
+    if (retval < 1)
         cout << "Error listening to socket\n";
+    //TODO: on timeout, pretend the reception of a RETREAT
 
-    if (recv(general.sock, &pathlen, 2, 0) < 2)
+    retval = (int) recv(general.sock, &pathlen, 2, 0);
+    if (retval < 2)
         cout << "Error receiving message\n";
 
     memcpy(&buffer[0], (char*) &pathlen, 2);
 
     count = (size_t) (4 * pathlen) + 1;
-
-    cout << "Receiving message with " << pathlen << " sources and " << count << " bytes left\n";
-
     if (recv(general.sock, &buffer[2], count, 0) < count)
         cout << "Error receiving message\n";
 
@@ -93,16 +101,6 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
 void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
 {
     this->messages[round] = msgs;
-}
-
-Lieutenant::~Lieutenant()
-{
-    close(serverSock);
-
-    for (int i = 0; i < generals.size(); i++)
-        close (generals[i].sock);
-
-    close(commanderSock);
 }
 
 vector<Message> Lieutenant::receiveMessages(int round)
@@ -119,20 +117,14 @@ vector<Message> Lieutenant::receiveMessages(int round)
                     this->numberOfTraitors - round);
 
     for (int i = 0; i < nMessages; i++) {
-        if (nMessages == 1)
+        if (round == this->numberOfTraitors)
             general = &commander;
         else
             general = &generals[i % (numberOfGenerals - 2)];
 
-        cout << "receiving msg now\n";
         msg = receiveMessage(*general);
-        cout << "msg received\n";
-
-
         msgs.push_back(msg);
     }
-
-    cout << "save received msg" << endl;
 
     saveReceivedMessages(round, msgs);
 
@@ -168,7 +160,8 @@ void Lieutenant::actAsCommander(vector<Message> msgs)
     }
 }
 
-void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs) {
+void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
+{
     Message sndMsg;
     for (int i = 0; i < msgs.size(); i++) {
         sndMsg = msgs[i];
@@ -201,7 +194,8 @@ void Lieutenant::sendMessage(GeneralAddress general, Message msg)
     msg.serialize(buffer);
 
     count = send(general.sock, buffer, (size_t) msg.size(), 0);
-    cout << "Sent " << count << " bytes\n";
+    if (count < msg.size())
+        cout << "Error sending message\n";
 }
 
 
@@ -241,6 +235,7 @@ void Lieutenant::openServerSocket()
 {
     int option;
     socklen_t len;
+    struct linger lngr;
     struct sockaddr_in addr;
 
     option = 1;
@@ -254,11 +249,22 @@ void Lieutenant::openServerSocket()
                    SO_REUSEADDR,
                    &option,
                    sizeof(int)) == -1) {
-        perror("setsockopt");
+        perror("setsockopt: reuseaddr");
         exit(1);
     }
 
-    int port = 5000 + myID.name;
+    lngr.l_linger = 120;
+    lngr.l_onoff = 1;
+    if (setsockopt(this->serverSock,
+                   SOL_SOCKET,
+                   SO_LINGER,
+                   &lngr,
+                   sizeof(struct linger))) {
+        perror("setsockopt: linger\n");
+        exit(1);
+    }
+
+    int port = 15000 + myID.name;
 
     addr = buildSockAddr(NULL, port);
     bind(serverSock, (struct sockaddr*) &addr, len);
@@ -273,6 +279,10 @@ int Lieutenant::connectToGenerals()
     socklen_t len;
     string ip, prefix;
     struct sockaddr_in addr;
+    struct linger lngr;
+
+    lngr.l_linger = 120;
+    lngr.l_onoff = 1;
 
     prefix = "10.0.0.";
     ip = "127.0.0.1";
@@ -288,12 +298,21 @@ int Lieutenant::connectToGenerals()
 
         if (!BYZ_RUNLOCAL)
             ip = prefix + to_string(host);
-        port = 5000 + host;
+        port = 15000 + host;
         addr = buildSockAddr(&ip, port);
 
         if (connect(sock, (struct sockaddr*) &addr, len) < 0) {
             cout << "Error connecting\n";
             return -1;
+        }
+
+        if (setsockopt(sock,
+                       SOL_SOCKET,
+                       SO_LINGER,
+                       &lngr,
+                       sizeof(struct linger))) {
+            perror("Could not set linger\n");
+            exit(1);
         }
 
         if (send(sock, (char*) &myID.name, 4, 0) < 4) {
@@ -318,6 +337,10 @@ int Lieutenant::waitNewGeneralsConnections()
     socklen_t len;
     uint32_t generalID;
     struct sockaddr addr;
+    struct linger lngr;
+
+    lngr.l_linger = 120;
+    lngr.l_onoff = 1;
 
     for (int i = myID.name + 1; i <= numberOfGenerals; i++) {
         sock = accept(serverSock, &addr, &len);
@@ -325,6 +348,15 @@ int Lieutenant::waitNewGeneralsConnections()
         if (sock <= 0) {
             cout << "Connection error\n";
             return -1;
+        }
+
+        if (setsockopt(sock,
+                       SOL_SOCKET,
+                       SO_LINGER,
+                       &lngr,
+                       sizeof(struct linger))) {
+            perror("Could not set linger\n");
+            exit(1);
         }
 
         generalID = receiveGeneralIdentification(sock, &error);
@@ -347,7 +379,8 @@ int Lieutenant::waitNewGeneralsConnections()
     return 0;
 }
 
-uint32_t Lieutenant::receiveGeneralIdentification(int sock, int *error) {
+uint32_t Lieutenant::receiveGeneralIdentification(int sock, int *error)
+{
     uint32_t id;
     fd_set fds;
     struct timeval tv;
