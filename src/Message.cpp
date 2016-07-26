@@ -88,6 +88,20 @@ Message::Message() {
 
 }
 
+string Message::toString() {
+    string result = "";
+
+    for (int i = 0; i < this->path.size(); i++) {
+        result += to_string(path[i].name);
+        result += "->";
+    }
+
+    result += ": ";
+    result += printCommand();
+
+    return result;
+}
+
 
 
 

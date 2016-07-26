@@ -46,6 +46,7 @@ public:
 
     int size();
     string printCommand();
+    string toString();
 };
 
 

@@ -25,16 +25,15 @@ void Commander::discoverGenerals()
     socklen_t len = sizeof(struct sockaddr_in);
     string prefix = "10.0.0.";
     uint32_t myID = 0;
-    string generalIP;
+    string ip;
 
+    ip = "127.0.0.1";
     for (int host = 1; host < numberOfGenerals; host++) {
         struct GeneralAddress general;
         struct sockaddr_in caddr;
 
-        if (BYZ_RUNLOCAL == 0)
-            generalIP = prefix + to_string(host);
-        else
-            generalIP = "127.0.0.1";
+        if (!BYZ_RUNLOCAL)
+            ip = prefix + to_string(host);
 
         general.id = GeneralIdentity(host);
         general.sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -46,7 +45,7 @@ void Commander::discoverGenerals()
         caddr.sin_port = htons(port);
         caddr.sin_family = AF_INET;
 
-        inet_aton(generalIP.c_str(), &caddr.sin_addr);
+        inet_aton(ip.c_str(), &caddr.sin_addr);
 
         if (connect(general.sock, (struct sockaddr*) &caddr, len) < 0)
             cout << "Error connecting to " << host << endl;
@@ -54,7 +53,7 @@ void Commander::discoverGenerals()
         if (send(general.sock, (char*) &myID, 4, 0) < 4)
             cout << "Error sending to " << host << endl;
 
-        cout << "Connected to " << generalIP << endl;
+        cout << "Connected to " << ip << endl;
     }
     cout << endl;
 }

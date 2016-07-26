@@ -59,27 +59,29 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
     char buffer[MSG_MAXBUFLEN];
     uint16_t *pathLen = (uint16_t*) &buffer[0];
 
-    cout << "receiving quantity" << endl;
+    fd_set fds;
+    struct timeval tv;
+
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    FD_ZERO(&fds);
+    FD_SET(general.sock, &fds);
+
+    if (select(general.sock+1, &fds, NULL, NULL, &tv) < 1)
+        cout << "Error listening to socket\n";
 
     if (recv(general.sock, buffer, 2, 0) < 2)
         cout << "Error receiving message\n";
 
-    cout << "calculating quantity...\n";
-
     numBytes = (size_t) (((*pathLen) * 2) + 1);
-
-    cout << "quantity is " << numBytes << endl;
 
     if (recv(general.sock, &buffer[2], numBytes, 0) < numBytes)
         cout << "Error receiving message\n";
 
-    cout << "received the rest" << endl;
-
     Message message(buffer);
 
-    cout << "Received: " << message.printCommand()
-         << " from lieutenant " << to_string(message.path[message.path.size() - 1].name)
-         << endl;
+    cout << "Received: " << message.toString() << endl;
 
     return message;
 }
@@ -101,17 +103,11 @@ vector<Message> Lieutenant::receiveMessages(int round)
     vector<Message> msgs;
     GeneralAddress commander, *general;
 
-    cout << "setting commander" << endl;
-
     commander = GeneralAddress(GeneralIdentity(0),
                                commanderSock);
 
-    cout << "calculating nmessages" << endl;
-
     nMessages = pow(this->numberOfGenerals - 2,
                     this->numberOfTraitors - round);
-
-    cout << "starting for " << nMessages << "message(s) " << endl;
 
     for (int i = 0; i < nMessages; i++) {
         if (nMessages == 1)
@@ -210,16 +206,20 @@ static struct sockaddr_in buildSockAddr(string *ip, int port)
     return addr;
 }
 
+//TODO: close sockets on error
 void Lieutenant::discoverGenerals()
 {
-    cout << "Starting connections\n";
     openServerSocket();
 
-    connectToGenerals();
+    if (connectToGenerals()) {
+        cout << "Exiting...\n";
+        exit(1);
+    }
 
-    waitNewGeneralsConnections();
-
-    cout << "Finished connections\n";
+    if (waitNewGeneralsConnections()) {
+        cout << "Exiting...\n";
+        exit(1);
+    }
 }
 
 void Lieutenant::openServerSocket()
@@ -243,7 +243,7 @@ void Lieutenant::openServerSocket()
         exit(1);
     }
 
-    int port = 5000 + this->myID.name;
+    int port = 5000 + myID.name;
 
     addr = buildSockAddr(NULL, port);
     bind(serverSock, (struct sockaddr*) &addr, len);
@@ -251,77 +251,110 @@ void Lieutenant::openServerSocket()
     listen(this->serverSock, this->numberOfGenerals);
 }
 
-void Lieutenant::connectToGenerals() {
+int Lieutenant::connectToGenerals()
+{
     int sock;
+    int port;
     socklen_t len;
     string ip, prefix;
     struct sockaddr_in addr;
 
     prefix = "10.0.0.";
+    ip = "127.0.0.1";
     len = sizeof(struct sockaddr_in);
 
-    for (int host = 1; host < this->myID.name; host++) {
-        if (BYZ_RUNLOCAL == 0)
-            ip = prefix + to_string(host);
-        else
-            ip = "127.0.0.1";
+    for (int host = 1; host < myID.name; host++) {
 
-        int port = 5000 + host;
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (sock <= 0) {
+            cout << "Error opening socket\n";
+            return -1;
+        }
+
+        if (!BYZ_RUNLOCAL)
+            ip = prefix + to_string(host);
+        port = 5000 + host;
         addr = buildSockAddr(&ip, port);
-        connect(sock, (struct sockaddr*) &addr, len);
-        send(sock, (char*) &myID.name, 4, 0);
+
+        if (connect(sock, (struct sockaddr*) &addr, len) < 0) {
+            cout << "Error connecting\n";
+            return -1;
+        }
+
+        if (send(sock, (char*) &myID.name, 4, 0) < 4) {
+            cout << "Error sending my ID\n";
+            return -1;
+        }
 
         GeneralAddress newGeneral(GeneralIdentity(host), sock);
         generals.push_back(newGeneral);
 
         cout << "Connection to " << ip << endl;
     }
+
+    return 0;
 }
 
-void Lieutenant::waitNewGeneralsConnections() {
-    int clientSock;
-    string prefix;
+int Lieutenant::waitNewGeneralsConnections()
+{
+    int error;
+    int sock;
+
     socklen_t len;
     uint32_t generalID;
-    struct sockaddr_in addr;
+    struct sockaddr addr;
 
-    prefix = "10.0.0.";
+    for (int i = myID.name + 1; i <= numberOfGenerals; i++) {
+        sock = accept(serverSock, &addr, &len);
 
-    // Lieutenant Generals
-    for (int i = this->myID.name + 1; i <= numberOfGenerals; i++) {
-        cout << "waiting new general...\n";
-
-        clientSock = accept(serverSock, (struct sockaddr*) &addr, &len);
-        if (clientSock <=0)
+        if (sock <= 0) {
             cout << "Connection error\n";
-
-        cout << "new general connected\n";
-
-        if (read(clientSock, (char*) &generalID, 4) < 4)
-            cout << "Read error\n";
-
-        cout << (uint32_t)generalID << endl;
-
-        cout << "received msg from new general conn " << generalID << endl;
-
-        if (generalID == 0) {
-            cout << "HEY!" << endl;
-            this->commanderSock = clientSock;
-            cout << "HO!" << endl;
-            continue;
+            return -1;
         }
 
-        cout << "mais um teste" << endl;
+        generalID = receiveGeneralIdentification(sock, &error);
 
-        cout << "adding new general\n";
+        if (error) {
+            return -1;
+        }
 
-        GeneralAddress newGeneral(GeneralIdentity(generalID), clientSock);
-        generals.push_back(newGeneral);
+        if (generalID) {
+            GeneralAddress newGeneral(GeneralIdentity(generalID), sock);
+            generals.push_back(newGeneral);
+        }
+        else {
+            this->commanderSock = sock;
+        }
 
-        cout << "Connection from " << prefix << generalID << endl;
+        cout << "Connection from " << generalID << endl;
     }
 
-    cout << "finished receiving connections\n";
+    return 0;
 }
 
+uint32_t Lieutenant::receiveGeneralIdentification(int sock, int *error) {
+    uint32_t id;
+    fd_set fds;
+    struct timeval tv;
+
+    tv.tv_sec = 15;
+    tv.tv_usec = 0;
+
+    FD_ZERO(&fds);
+    FD_SET(sock, &fds);
+
+    if (select(sock+1, &fds, NULL, NULL, &tv) < 1) {
+        cout << "Connection error\n";
+        *error = 1;
+        return 0;
+    }
+
+    if (read(sock, (char*) &id, 4) < 4) {
+        cout << "Read error\n";
+        *error = 1;
+        return 0;
+    }
+
+    *error = 0;
+    return id;
+}
