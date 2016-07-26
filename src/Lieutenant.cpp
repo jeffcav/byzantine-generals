@@ -11,6 +11,8 @@
 #include <cstring>
 #include "Lieutenant.h"
 
+extern int BYZ_RUNLOCAL;
+
 Lieutenant::Lieutenant(int32_t id, Loyalty loyalty, int nGenerals, int nTraitors)
         : General(id, loyalty, lieutenant, nGenerals, nTraitors)
 {
@@ -31,6 +33,8 @@ void Lieutenant::run()
 vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 {
     vector<Message> receivedMessages = receiveMessages(k);
+
+    cout << "received messages" << endl;
 
     sleep(1);
     cout << endl;
@@ -55,10 +59,21 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
     char buffer[MSG_MAXBUFLEN];
     uint16_t *pathLen = (uint16_t*) &buffer[0];
 
-    recv(general.sock, buffer, 2, 0);
+    cout << "receiving quantity" << endl;
+
+    if (recv(general.sock, buffer, 2, 0) < 2)
+        cout << "Error receiving message\n";
+
+    cout << "calculating quantity...\n";
 
     numBytes = (size_t) (((*pathLen) * 2) + 1);
-    recv(general.sock, &buffer[2], numBytes, 0);
+
+    cout << "quantity is " << numBytes << endl;
+
+    if (recv(general.sock, &buffer[2], numBytes, 0) < numBytes)
+        cout << "Error receiving message\n";
+
+    cout << "received the rest" << endl;
 
     Message message(buffer);
 
@@ -86,11 +101,17 @@ vector<Message> Lieutenant::receiveMessages(int round)
     vector<Message> msgs;
     GeneralAddress commander, *general;
 
+    cout << "setting commander" << endl;
+
     commander = GeneralAddress(GeneralIdentity(0),
                                commanderSock);
 
+    cout << "calculating nmessages" << endl;
+
     nMessages = pow(this->numberOfGenerals - 2,
                     this->numberOfTraitors - round);
+
+    cout << "starting for " << nMessages << "message(s) " << endl;
 
     for (int i = 0; i < nMessages; i++) {
         if (nMessages == 1)
@@ -98,9 +119,15 @@ vector<Message> Lieutenant::receiveMessages(int round)
         else
             general = &generals[i % (numberOfGenerals - 2)];
 
+        cout << "receiving msg now\n";
         msg = receiveMessage(*general);
+        cout << "msg received\n";
+
+
         msgs.push_back(msg);
     }
+
+    cout << "save received msg" << endl;
 
     saveReceivedMessages(round, msgs);
 
@@ -216,7 +243,9 @@ void Lieutenant::openServerSocket()
         exit(1);
     }
 
-    addr = buildSockAddr(NULL, 5000);
+    int port = 5000 + this->myID.name;
+
+    addr = buildSockAddr(NULL, port);
     bind(serverSock, (struct sockaddr*) &addr, len);
 
     listen(this->serverSock, this->numberOfGenerals);
@@ -232,10 +261,14 @@ void Lieutenant::connectToGenerals() {
     len = sizeof(struct sockaddr_in);
 
     for (int host = 1; host < this->myID.name; host++) {
-        ip = prefix + to_string(host);
+        if (BYZ_RUNLOCAL == 0)
+            ip = prefix + to_string(host);
+        else
+            ip = "127.0.0.1";
 
+        int port = 5000 + host;
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        addr = buildSockAddr(&ip, 5000);
+        addr = buildSockAddr(&ip, port);
         connect(sock, (struct sockaddr*) &addr, len);
         send(sock, (char*) &myID.name, 4, 0);
 
@@ -257,21 +290,38 @@ void Lieutenant::waitNewGeneralsConnections() {
 
     // Lieutenant Generals
     for (int i = this->myID.name + 1; i <= numberOfGenerals; i++) {
+        cout << "waiting new general...\n";
+
         clientSock = accept(serverSock, (struct sockaddr*) &addr, &len);
-        read(clientSock, (char*) &generalID, 4);
+        if (clientSock <=0)
+            cout << "Connection error\n";
+
+        cout << "new general connected\n";
+
+        if (read(clientSock, (char*) &generalID, 4) < 4)
+            cout << "Read error\n";
+
+        cout << (uint32_t)generalID << endl;
+
+        cout << "received msg from new general conn " << generalID << endl;
 
         if (generalID == 0) {
-            commanderSock = clientSock;
-
-            cout << "Connected to commander\n";
-
+            cout << "HEY!" << endl;
+            this->commanderSock = clientSock;
+            cout << "HO!" << endl;
             continue;
         }
+
+        cout << "mais um teste" << endl;
+
+        cout << "adding new general\n";
 
         GeneralAddress newGeneral(GeneralIdentity(generalID), clientSock);
         generals.push_back(newGeneral);
 
         cout << "Connection from " << prefix << generalID << endl;
     }
+
+    cout << "finished receiving connections\n";
 }
 

@@ -62,6 +62,7 @@ def run_environment(n_generals, n_traitors):
         ne = net.get(hostname)
         ne.cmd('wait', pids[i-1])
 
+    sleep(2)
     net.stop()
 
     for i in range(n_traitors + 1, n_generals):

@@ -3,6 +3,8 @@
 //
 
 #include <cstring>
+#include <iostream>
+#include <netinet/in.h>
 #include "Message.h"
 
 void Message::serialize(char *buffer) {
@@ -10,7 +12,10 @@ void Message::serialize(char *buffer) {
     int pos;
     uint16_t pathLen;
 
-    memcpy(&buffer[0], &pathLen, 2);
+    pathLen = (uint16_t) this->path.size();
+    //pathLen = htons(pathLen);
+    memcpy(&buffer[0], (char*) &pathLen, 2);
+    //pathLen = ntohs(pathLen);
 
     pos = 2;
     for (uint16_t i = 0; i < pathLen; i++) {
@@ -32,7 +37,7 @@ void Message::serialize(char *buffer) {
 }
 
 int Message::size() {
-    return 2 + (2 * this->path.size()) + 1;
+    return (int) (2 + (2 * this->path.size()) + 1);
 }
 
 Message::Message(GeneralIdentity source, Command command) : command(command){
@@ -44,7 +49,11 @@ Message::Message(char *buffer) {
     char cmd;
     uint16_t pathLen;
 
+    std::cout << "starting conversion" << endl;
+
     memcpy(&pathLen, &buffer[0], 2);
+
+    std::cout << "path len gone \n";
 
     int pos = 2;
     for (uint16_t i = 0; i < pathLen; i++) {
@@ -59,6 +68,7 @@ Message::Message(char *buffer) {
     switch (cmd) {
         case 1:
             this->command = attack;
+            break;
         default:
             this->command = retreat;
     }

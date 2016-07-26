@@ -12,6 +12,8 @@
 
 using namespace std;
 
+extern int BYZ_RUNLOCAL;
+
 Commander::Commander(int nGenerals, int nTraitors) :
         General(0, loyal, commanding, nGenerals, nTraitors)
 {
@@ -23,18 +25,25 @@ void Commander::discoverGenerals()
     socklen_t len = sizeof(struct sockaddr_in);
     string prefix = "10.0.0.";
     uint32_t myID = 0;
+    string generalIP;
 
     for (int host = 1; host < numberOfGenerals; host++) {
         struct GeneralAddress general;
         struct sockaddr_in caddr;
-        string generalIP = prefix + to_string(host);
+
+        if (BYZ_RUNLOCAL == 0)
+            generalIP = prefix + to_string(host);
+        else
+            generalIP = "127.0.0.1";
 
         general.id = GeneralIdentity(host);
         general.sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         generals.push_back(general);
 
         memset(&caddr, 0 ,sizeof(struct sockaddr_in));
-        caddr.sin_port = htons(5000);
+
+        int port = 5000 + host;
+        caddr.sin_port = htons(port);
         caddr.sin_family = AF_INET;
 
         inet_aton(generalIP.c_str(), &caddr.sin_addr);
@@ -65,7 +74,9 @@ void Commander::sendMessage(GeneralAddress general, Message message)
     socklen_t len = sizeof(struct sockaddr_in);
 
     message.serialize(buffer);
-    sendto(general.sock, buffer, (size_t) message.size(), 0, (struct sockaddr*) &saddr, len);
+    send(general.sock, buffer, 5, 0);
+
+    sleep(1);
 
     close(general.sock);
 
