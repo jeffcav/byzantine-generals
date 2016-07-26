@@ -22,7 +22,7 @@ void Commander::discoverGenerals()
 {
     socklen_t len = sizeof(struct sockaddr_in);
     string prefix = "10.0.0.";
-    int32_t myID = 0;
+    uint32_t myID = 0;
 
     for (int host = 1; host < numberOfGenerals; host++) {
         struct GeneralAddress general;
@@ -39,8 +39,11 @@ void Commander::discoverGenerals()
 
         inet_aton(generalIP.c_str(), &caddr.sin_addr);
 
-        connect(general.sock, (struct sockaddr*) &caddr, len);
-        send(general.sock, (char*) &myID, 4, 0);
+        if (connect(general.sock, (struct sockaddr*) &caddr, len) < 0)
+            cout << "Error connecting to " << host << endl;
+
+        if (send(general.sock, (char*) &myID, 4, 0) < 4)
+            cout << "Error sending to " << host << endl;
 
         cout << "Connected to " << generalIP << endl;
     }
@@ -57,7 +60,7 @@ void Commander::run()
 
 void Commander::sendMessage(GeneralAddress general, Message message)
 {
-    char buffer[6];
+    char buffer[5];
     struct sockaddr_in saddr;
     socklen_t len = sizeof(struct sockaddr_in);
 

@@ -23,6 +23,8 @@ Lieutenant::Lieutenant(int32_t id, int nGenerals, int nTraitors)
 
 void Lieutenant::run()
 {
+    cout << "starting algorithm \n";
+
     OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
 }
 
@@ -49,13 +51,19 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 
 Message Lieutenant::receiveMessage(GeneralAddress general)
 {
-    char buffer[6];
-    recv(general.sock, buffer, 6, 0);
+    size_t numBytes;
+    char buffer[MSG_MAXBUFLEN];
+    uint16_t *pathLen = (uint16_t*) &buffer[0];
+
+    recv(general.sock, buffer, 2, 0);
+
+    numBytes = (size_t) (((*pathLen) * 2) + 1);
+    recv(general.sock, &buffer[2], numBytes, 0);
 
     Message message(buffer);
 
     cout << "Received: " << message.printCommand()
-         << " from lieutenant " << to_string(message.source.name)
+         << " from lieutenant " << to_string(message.path[message.path.size() - 1].name)
          << endl;
 
     return message;
@@ -140,7 +148,7 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs) {
 
 void Lieutenant::prepareMessage(Message *msg)
 {
-    msg->source = this->myID;
+    msg->path.push_back(this->myID);
 
     if (this->isTraitorous())
         sabotage(msg);
@@ -177,11 +185,14 @@ static struct sockaddr_in buildSockAddr(string *ip, int port)
 
 void Lieutenant::discoverGenerals()
 {
+    cout << "Starting connections\n";
     openServerSocket();
 
     connectToGenerals();
 
     waitNewGeneralsConnections();
+
+    cout << "Finished connections\n";
 }
 
 void Lieutenant::openServerSocket()
@@ -251,6 +262,9 @@ void Lieutenant::waitNewGeneralsConnections() {
 
         if (generalID == 0) {
             commanderSock = clientSock;
+
+            cout << "Connected to commander\n";
+
             continue;
         }
 
@@ -259,8 +273,5 @@ void Lieutenant::waitNewGeneralsConnections() {
 
         cout << "Connection from " << prefix << generalID << endl;
     }
-
-    // Commanding General
-    //commanderSock = accept(serverSock, (struct sockaddr*) &addr, &len);
 }
 

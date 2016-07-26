@@ -8,7 +8,7 @@
 
 class GeneralIdentity {
 public:
-    int32_t name;
+    uint32_t name;
 
 public:
     GeneralIdentity(int32_t name);
