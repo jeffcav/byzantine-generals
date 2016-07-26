@@ -45,8 +45,11 @@ public:
     void serialize(char *buffer);
 
     int size();
-    string printCommand();
+
+    string commandAsString();
     string toString();
+
+    void appendSource(GeneralIdentity id);
 };
 
 

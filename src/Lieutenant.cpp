@@ -55,14 +55,14 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 
 Message Lieutenant::receiveMessage(GeneralAddress general)
 {
-    size_t numBytes;
+    size_t count;
     char buffer[MSG_MAXBUFLEN];
-    uint16_t *pathLen = (uint16_t*) &buffer[0];
+    uint16_t pathlen;
 
     fd_set fds;
     struct timeval tv;
 
-    tv.tv_sec = 5;
+    tv.tv_sec = 15;
     tv.tv_usec = 0;
 
     FD_ZERO(&fds);
@@ -71,12 +71,16 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
     if (select(general.sock+1, &fds, NULL, NULL, &tv) < 1)
         cout << "Error listening to socket\n";
 
-    if (recv(general.sock, buffer, 2, 0) < 2)
+    if (recv(general.sock, &pathlen, 2, 0) < 2)
         cout << "Error receiving message\n";
 
-    numBytes = (size_t) (((*pathLen) * 2) + 1);
+    memcpy(&buffer[0], (char*) &pathlen, 2);
 
-    if (recv(general.sock, &buffer[2], numBytes, 0) < numBytes)
+    count = (size_t) (4 * pathlen) + 1;
+
+    cout << "Receiving message with " << pathlen << " sources and " << count << " bytes left\n";
+
+    if (recv(general.sock, &buffer[2], count, 0) < count)
         cout << "Error receiving message\n";
 
     Message message(buffer);
@@ -93,7 +97,12 @@ void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
 
 Lieutenant::~Lieutenant()
 {
-    close(this->serverSock);
+    close(serverSock);
+
+    for (int i = 0; i < generals.size(); i++)
+        close (generals[i].sock);
+
+    close(commanderSock);
 }
 
 vector<Message> Lieutenant::receiveMessages(int round)
@@ -165,13 +174,16 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs) {
         sndMsg = msgs[i];
 
         prepareMessage(&sndMsg);
+
+        cout << "Sending "<< sndMsg.toString() << endl;
+
         sendMessage(general, sndMsg);
     }
 }
 
 void Lieutenant::prepareMessage(Message *msg)
 {
-    msg->path.push_back(this->myID);
+    msg->appendSource(myID);
 
     if (this->isTraitorous())
         sabotage(msg);
@@ -184,9 +196,12 @@ void Lieutenant::sabotage(Message *msg)
 
 void Lieutenant::sendMessage(GeneralAddress general, Message msg)
 {
+    ssize_t count;
     char buffer[msg.size()];
     msg.serialize(buffer);
-    send(general.sock, buffer, (size_t) msg.size(), 0);
+
+    count = send(general.sock, buffer, (size_t) msg.size(), 0);
+    cout << "Sent " << count << " bytes\n";
 }
 
 
@@ -212,12 +227,12 @@ void Lieutenant::discoverGenerals()
     openServerSocket();
 
     if (connectToGenerals()) {
-        cout << "Exiting...\n";
+        cout << "Could not connect to generals. Exiting...\n";
         exit(1);
     }
 
     if (waitNewGeneralsConnections()) {
-        cout << "Exiting...\n";
+        cout << "Could not be found by generals. Exiting...\n";
         exit(1);
     }
 }
@@ -289,7 +304,7 @@ int Lieutenant::connectToGenerals()
         GeneralAddress newGeneral(GeneralIdentity(host), sock);
         generals.push_back(newGeneral);
 
-        cout << "Connection to " << ip << endl;
+        cout << "Connection to " << host << endl;
     }
 
     return 0;

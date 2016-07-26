@@ -60,6 +60,8 @@ void Commander::discoverGenerals()
 
 void Commander::run()
 {
+    int generalsLeft = this->numberOfGenerals;
+
     for (int i = 0; i < this->numberOfGenerals - 1; i++) {
         Message message(this->myID, attack);
         sendMessage(this->generals[i], message);
@@ -68,18 +70,18 @@ void Commander::run()
 
 void Commander::sendMessage(GeneralAddress general, Message message)
 {
-    char buffer[5];
+    char buffer[7];
     struct sockaddr_in saddr;
     socklen_t len = sizeof(struct sockaddr_in);
 
     message.serialize(buffer);
-    send(general.sock, buffer, 5, 0);
+    send(general.sock, buffer, 7, 0);
 
     sleep(1);
 
     close(general.sock);
 
-    cout << "Sent " << message.printCommand() << " to " << general.id.name << "\n";
+    cout << "Sent " << message.commandAsString() << " to " << general.id.name << "\n";
 }
 
 
