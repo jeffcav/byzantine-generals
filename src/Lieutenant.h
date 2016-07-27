@@ -34,8 +34,10 @@ protected:
 
 private:
     void openServerSocket();
-    void connectToGenerals();
-    void waitNewGeneralsConnections();
+    int connectToGenerals();
+    int waitNewGeneralsConnections();
+
+    uint32_t receiveGeneralIdentification(int sock, int *status);
 
     vector<Message> receiveMessages(int round);
     Message receiveMessage(GeneralAddress general);

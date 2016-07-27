@@ -12,6 +12,8 @@
 
 using namespace std;
 
+extern int BYZ_RUNLOCAL;
+
 Commander::Commander(int nGenerals, int nTraitors) :
         General(0, loyal, commanding, nGenerals, nTraitors)
 {
@@ -22,33 +24,45 @@ void Commander::discoverGenerals()
 {
     socklen_t len = sizeof(struct sockaddr_in);
     string prefix = "10.0.0.";
-    int32_t myID = 0;
+    uint32_t myID = 0;
+    string ip;
 
+    ip = "127.0.0.1";
     for (int host = 1; host < numberOfGenerals; host++) {
         struct GeneralAddress general;
         struct sockaddr_in caddr;
-        string generalIP = prefix + to_string(host);
+
+
+        if (!BYZ_RUNLOCAL)
+            ip = prefix + to_string(host);
 
         general.id = GeneralIdentity(host);
         general.sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         generals.push_back(general);
 
         memset(&caddr, 0 ,sizeof(struct sockaddr_in));
-        caddr.sin_port = htons(5000);
+
+        int port = 15000 + host;
+        caddr.sin_port = htons(port);
         caddr.sin_family = AF_INET;
 
-        inet_aton(generalIP.c_str(), &caddr.sin_addr);
+        inet_aton(ip.c_str(), &caddr.sin_addr);
 
-        connect(general.sock, (struct sockaddr*) &caddr, len);
-        send(general.sock, (char*) &myID, 4, 0);
+        if (connect(general.sock, (struct sockaddr*) &caddr, len) < 0)
+            cout << "Error connecting to " << host << endl;
 
-        cout << "Connected to " << generalIP << endl;
+        if (send(general.sock, (char*) &myID, 4, 0) < 4)
+            cout << "Error sending to " << host << endl;
+
+        cout << "Connected to " << ip << endl;
     }
     cout << endl;
 }
 
 void Commander::run()
 {
+    int generalsLeft = this->numberOfGenerals;
+
     for (int i = 0; i < this->numberOfGenerals - 1; i++) {
         Message message(this->myID, attack);
         sendMessage(this->generals[i], message);
@@ -57,16 +71,16 @@ void Commander::run()
 
 void Commander::sendMessage(GeneralAddress general, Message message)
 {
-    char buffer[6];
+    char buffer[7];
     struct sockaddr_in saddr;
     socklen_t len = sizeof(struct sockaddr_in);
 
     message.serialize(buffer);
-    sendto(general.sock, buffer, (size_t) message.size(), 0, (struct sockaddr*) &saddr, len);
-
+    send(general.sock, buffer, 7, 0);
+    
     close(general.sock);
 
-    cout << "Sent " << message.printCommand() << " to " << general.id.name << "\n";
+    cout << "Sent " << message.commandAsString() << " to " << general.id.name << "\n";
 }
 
 
