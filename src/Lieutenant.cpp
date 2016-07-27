@@ -109,15 +109,27 @@ vector<Message> Lieutenant::receiveMessages(int round)
 
     commander = GeneralAddress(GeneralIdentity(0),
                                commanderSock);
+    GeneralAddress myself(myID, recvSock);
 
-    nMessages = pow(this->numberOfGenerals - 2,
-                    this->numberOfTraitors - round);
+    nMessages = 1;
+    int k = this->numberOfTraitors - round;
+    for (int i = 1; i <= k; i++) {
+        nMessages *= (this->numberOfGenerals - i);
+    }
+
+    cout << "Receiving " << nMessages << " messages...\n";
 
     for (int i = 0; i < nMessages; i++) {
         if (round == this->numberOfTraitors)
             general = &commander;
-        else
+        else if (i == (nMessages-1)) {
+            general = &myself;
+        }
+        else {
             general = &generals[i % (numberOfGenerals - 2)];
+        }
+
+        cout << "Receiving from general " << general->id.name << endl;
 
         msg = receiveMessage(*general);
         msgs.push_back(msg);
@@ -164,6 +176,11 @@ void Lieutenant::actAsCommander(vector<Message> msgs)
     for (int i = 0; i < generals.size(); i++) {
         sendMessages(generals[i], remainingMessages);
     }
+
+    //send messages also to myself
+    GeneralAddress myself(myID, sendSock);
+    sendMessages(myself, remainingMessages);
+
 }
 
 void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
@@ -175,7 +192,7 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
         //TODO: call sabotage instead
         prepareMessage(&sndMsg);
 
-        cout << "Sending "<< sndMsg.toString() << endl;
+        cout << "Sending "<< sndMsg.toString() << " to "<< general.id.name << endl;
 
         sendMessage(general, sndMsg);
     }
@@ -293,7 +310,7 @@ int Lieutenant::connectToGenerals()
     ip = "127.0.0.1";
     len = sizeof(struct sockaddr_in);
 
-    for (int host = 1; host < myID.name; host++) {
+    for (int host = 1; host <= myID.name; host++) {
 
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (sock <= 0) {
@@ -325,8 +342,13 @@ int Lieutenant::connectToGenerals()
             return -1;
         }
 
-        GeneralAddress newGeneral(GeneralIdentity(host), sock);
-        generals.push_back(newGeneral);
+        if (host == myID.name) {
+            sendSock = sock;
+        }
+        else {
+            GeneralAddress newGeneral(GeneralIdentity(host), sock);
+            generals.push_back(newGeneral);
+        }
 
         cout << "Connection to " << host << endl;
     }
@@ -347,7 +369,7 @@ int Lieutenant::waitNewGeneralsConnections()
     lngr.l_linger = 120;
     lngr.l_onoff = 1;
 
-    for (int i = myID.name + 1; i <= numberOfGenerals; i++) {
+    for (int i = myID.name; i <= numberOfGenerals; i++) {
         sock = accept(serverSock, &addr, &len);
 
         if (sock <= 0) {
@@ -370,15 +392,18 @@ int Lieutenant::waitNewGeneralsConnections()
             return -1;
         }
 
-        if (generalID) {
+        if (generalID == 0) {
+            this->commanderSock = sock;
+        }
+        else if (generalID != myID.name) {
+            cout << "Connection from " << generalID << endl;
+
             GeneralAddress newGeneral(GeneralIdentity(generalID), sock);
             generals.push_back(newGeneral);
         }
         else {
-            this->commanderSock = sock;
+            recvSock = sock;
         }
-
-        cout << "Connection from " << generalID << endl;
     }
 
     return 0;
