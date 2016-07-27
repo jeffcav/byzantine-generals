@@ -77,9 +77,7 @@ void Commander::sendMessage(GeneralAddress general, Message message)
 
     message.serialize(buffer);
     send(general.sock, buffer, 7, 0);
-
-    sleep(1);
-
+    
     close(general.sock);
 
     cout << "Sent " << message.commandAsString() << " to " << general.id.name << "\n";

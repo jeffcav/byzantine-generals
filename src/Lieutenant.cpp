@@ -43,9 +43,6 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 {
     vector<Message> receivedMessages = receiveMessages(k);
 
-    sleep(1);
-    cout << endl;
-
     if (k == 0)
         return receivedMessages;
 

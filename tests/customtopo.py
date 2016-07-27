@@ -31,7 +31,7 @@ def decision(i):
         last = f.readline()       # Read last line.
         return last
 
-def run_environment(n_generals, n_traitors):
+def launch(n_generals, n_traitors):
     topo = CustomTopo(n_generals)
     net = Mininet(topo = topo, controller = OVSController)
     net.start()
@@ -62,7 +62,6 @@ def run_environment(n_generals, n_traitors):
         ne = net.get(hostname)
         ne.cmd('wait', pids[i-1])
 
-    sleep(2)
     net.stop()
 
     for i in range(n_traitors + 1, n_generals):
@@ -71,4 +70,4 @@ def run_environment(n_generals, n_traitors):
 if __name__ == '__main__':
     # Tell mininet to print useful information
     setLogLevel('info')
-    run_environment(4, 2)
+    launch(5, 2)
