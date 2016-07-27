@@ -98,8 +98,14 @@ string Message::toString() {
     return result;
 }
 
-void Message::appendSource(GeneralIdentity id) {
+bool Message::appendSource(GeneralIdentity id) {
+    for (int i = 0; i < path.size(); i++) {
+        if (path[i].name == id.name)
+            return false;
+    }
+
     this->path.push_back(id);
+    return true;
 }
 
 

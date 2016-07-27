@@ -152,8 +152,17 @@ Command Lieutenant::majority(int k)
 
 void Lieutenant::actAsCommander(vector<Message> msgs)
 {
-    for (int i = 0; i < this->generals.size(); i++) {
-        sendMessages(generals[i], msgs);
+    vector<Message> remainingMessages;
+
+    // Try to append our ID in the path of each message
+    for (int i = 0; i < msgs.size(); i++) {
+        if (msgs[i].appendSource(myID))
+            remainingMessages.push_back(msgs[i]);
+    }
+
+    // Send messages to all lieutenants
+    for (int i = 0; i < generals.size(); i++) {
+        sendMessages(generals[i], remainingMessages);
     }
 }
 
@@ -163,6 +172,7 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
     for (int i = 0; i < msgs.size(); i++) {
         sndMsg = msgs[i];
 
+        //TODO: call sabotage instead
         prepareMessage(&sndMsg);
 
         cout << "Sending "<< sndMsg.toString() << endl;
@@ -173,8 +183,6 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
 
 void Lieutenant::prepareMessage(Message *msg)
 {
-    msg->appendSource(myID);
-
     if (this->isTraitorous())
         sabotage(msg);
 }

@@ -49,7 +49,7 @@ public:
     string commandAsString();
     string toString();
 
-    void appendSource(GeneralIdentity id);
+    bool appendSource(GeneralIdentity id);
 };
 
 
