@@ -21,6 +21,7 @@ private:
 
     int serverSock;
     int commanderSock;
+    int sendSock, recvSock;
 
 public:
     Lieutenant(int32_t, Loyalty, int, int);
