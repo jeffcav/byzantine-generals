@@ -49,6 +49,8 @@ public:
     string commandAsString();
     string toString();
 
+    bool comesFrom(Message m);
+
     bool appendSource(GeneralIdentity id);
 };
 

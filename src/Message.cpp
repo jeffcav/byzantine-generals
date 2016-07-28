@@ -108,6 +108,17 @@ bool Message::appendSource(GeneralIdentity id) {
     return true;
 }
 
+bool Message::comesFrom(Message m) {
+    if (m.path.size() > this->path.size())
+        return false;
+
+    for (int i = 0; i < m.path.size(); i++)
+        if (m.path[i].name != this->path[i].name)
+            return false;
+
+    return true;
+}
+
 
 
 
