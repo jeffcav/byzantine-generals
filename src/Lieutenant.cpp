@@ -102,37 +102,43 @@ void Lieutenant::saveReceivedMessages(int round, vector<Message> msgs)
 
 vector<Message> Lieutenant::receiveMessages(int round)
 {
+    int j;
     Message msg;
     int nMessages;
     vector<Message> msgs;
     GeneralAddress commander, *general;
-
-    commander = GeneralAddress(GeneralIdentity(0),
-                               commanderSock);
     GeneralAddress myself(myID, recvSock);
 
-    nMessages = 1;
-    int k = this->numberOfTraitors - round;
-    for (int i = 1; i <= k; i++) {
-        nMessages *= (this->numberOfGenerals - i);
-    }
+    cout << endl;
 
-    cout << "Receiving " << nMessages << " messages...\n";
+    if (round == numberOfTraitors) {
+        commander = GeneralAddress(GeneralIdentity(0), commanderSock);
 
-    for (int i = 0; i < nMessages; i++) {
-        if (round == this->numberOfTraitors)
-            general = &commander;
-        else if (i == (nMessages-1)) {
-            general = &myself;
-        }
-        else {
-            general = &generals[i % (numberOfGenerals - 2)];
-        }
-
-        cout << "Receiving from general " << general->id.name << endl;
-
-        msg = receiveMessage(*general);
+        msg = receiveMessage(commander);
         msgs.push_back(msg);
+    }
+    else {
+        nMessages = 1;
+        int k = this->numberOfTraitors - round;
+        for (int i = 1; i <= k; i++) {
+            nMessages *= (this->numberOfGenerals - i);
+        }
+
+        for (int i = 0; i < nMessages; i++) {
+
+            j = i % (numberOfGenerals - 1);
+
+            if (j == (numberOfGenerals - 2)) {
+                general = &myself;
+            }
+            else {
+                general = &generals[j];
+            }
+
+            msg = receiveMessage(*general);
+            msgs.push_back(msg);
+        }
+
     }
 
     saveReceivedMessages(round, msgs);
@@ -191,8 +197,6 @@ void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
 
         //TODO: call sabotage instead
         prepareMessage(&sndMsg);
-
-        cout << "Sending "<< sndMsg.toString() << " to "<< general.id.name << endl;
 
         sendMessage(general, sndMsg);
     }
