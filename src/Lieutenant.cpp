@@ -36,8 +36,44 @@ Lieutenant::~Lieutenant()
 
 void Lieutenant::run()
 {
-    OM(this->numberOfGenerals, this->numberOfTraitors, this->numberOfTraitors);
+    OM(numberOfGenerals, numberOfTraitors, numberOfTraitors);
+
+    Message m(GeneralIdentity(0), attack);
+    Command cmd = decide(numberOfTraitors, m);
+    cout << (cmd==attack?"Attack!":"Retreat!") << endl;
 }
+
+Command Lieutenant::decide(int round, Message message) {
+    vector<Command> commands;
+
+    for (int i = 0; i < messages[round].size(); i++) {
+        if (!messages[round][i].comesFrom(message))
+            continue;
+
+        if (round > 0)
+            commands.push_back(decide(round-1, messages[round][i]));
+        else
+            commands.push_back(messages[round][i].command);
+    }
+
+    return majority(commands);
+}
+
+Command Lieutenant::majority(vector<Command> commands) {
+    int nAttack = 0, nRetreat = 0;
+
+    for (int i = 0; i < commands.size(); i++){
+        if (commands[i] == attack)
+            nAttack++;
+        else
+            nRetreat++;
+    }
+
+    if (nAttack > nRetreat)
+        return attack;
+    return retreat;
+}
+
 
 vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 {
@@ -48,11 +84,6 @@ vector<Message> Lieutenant::OM(int nGenerals, int nTraitors, int k)
 
     actAsCommander(receivedMessages);
     receivedMessages = OM(nGenerals, nTraitors, k-1);
-
-    if (k == nTraitors) {
-        Command c = majority(k);
-        cout << (c==attack?"Attack!":"Retreat!") << endl;
-    }
 
     return receivedMessages;
 }
@@ -144,28 +175,6 @@ vector<Message> Lieutenant::receiveMessages(int round)
     saveReceivedMessages(round, msgs);
 
     return msgs;
-}
-
-Command Lieutenant::majority(int k)
-{
-    int nAttack = 0, nRetreat = 0;
-
-    for (int round = 0; round <= k; round++) {
-        vector<Message> msgs = messages[round];
-
-        for (int i = 0; i < msgs.size(); i++) {
-
-            if (msgs[i].command == attack)
-                nAttack++;
-            else
-                nRetreat++;
-        }
-    }
-
-    if (nAttack > nRetreat)
-        return attack;
-    return retreat;
-
 }
 
 void Lieutenant::actAsCommander(vector<Message> msgs)

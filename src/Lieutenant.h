@@ -49,7 +49,9 @@ private:
 
     vector<Message> OM(int nGenerals, int nTraitors, int k);
     void actAsCommander(vector<Message> msgs);
-    Command majority(int k);
+    Command majority(vector<Command> commands);
+
+    Command decide(int round, Message message);
 
     void sabotage(Message *msg);
 
