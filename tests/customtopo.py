@@ -23,7 +23,7 @@ class CustomTopo(Topo):
 topos = {'customtopo': (lambda: CustomTopo())}
 
 def decision(i):
-    with open("tmp/gen" + i + ".out", "rb") as f:
+    with open("log/gen" + i + ".out", "rb") as f:
         first = f.readline()      # Read the first line.
         f.seek(-2, 2)             # Jump to the second last byte.
         while f.read(1) != b"\n": # Until EOL is found...
@@ -36,7 +36,7 @@ def launch(n_generals, n_traitors):
     net = Mininet(topo = topo, controller = OVSController)
     net.start()
 
-    prog_name = "./../out/Debug/byzantine_generals "
+    prog_name = "./bin/byz "
 
     pids = {}
     for i in range(1, n_generals + 1):
@@ -49,7 +49,7 @@ def launch(n_generals, n_traitors):
         general_id = i % n_generals
 
         prog_args = str(general_id) + " " + str(n_generals) + " " + str(n_traitors)
-        prog_other = " > tmp/gen" + str(general_id) + ".out &"
+        prog_other = " > log/gen" + str(general_id) + ".out &"
 
         command = prog_name + prog_args + prog_other
         ne.cmd(command)

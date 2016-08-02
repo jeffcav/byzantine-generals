@@ -268,6 +268,7 @@ void Lieutenant::discoverGenerals()
 
 void Lieutenant::openServerSocket()
 {
+    int retval;
     int option;
     socklen_t len;
     struct linger lngr;
@@ -302,9 +303,17 @@ void Lieutenant::openServerSocket()
     int port = 15000 + myID.name;
 
     addr = buildSockAddr(NULL, port);
-    bind(serverSock, (struct sockaddr*) &addr, len);
-
-    listen(this->serverSock, this->numberOfGenerals);
+    retval = bind(serverSock, (struct sockaddr*) &addr, len);
+    if (retval < 0) {
+        perror("bind\n");
+        exit(1);
+    }
+    
+    retval = listen(this->serverSock, this->numberOfGenerals);
+    if (retval < 0) {
+        perror("listen\n");
+	exit(1);
+    }
 }
 
 int Lieutenant::connectToGenerals()
@@ -324,17 +333,19 @@ int Lieutenant::connectToGenerals()
     len = sizeof(struct sockaddr_in);
 
     for (int host = 1; host <= myID.name; host++) {
-
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (sock <= 0) {
             cout << "Error opening socket\n";
             return -1;
         }
 
-        if (!BYZ_RUNLOCAL)
+        if (!BYZ_RUNLOCAL) {
             ip = prefix + to_string(host);
+        }
         port = 15000 + host;
         addr = buildSockAddr(&ip, port);
+
+	cout << ip << ":" << port << endl;
 
         if (connect(sock, (struct sockaddr*) &addr, len) < 0) {
             cout << "Error connecting\n";
@@ -382,11 +393,13 @@ int Lieutenant::waitNewGeneralsConnections()
     lngr.l_linger = 120;
     lngr.l_onoff = 1;
 
+    len = sizeof(struct sockaddr);
+
     for (int i = myID.name; i <= numberOfGenerals; i++) {
         sock = accept(serverSock, &addr, &len);
 
         if (sock <= 0) {
-            cout << "Connection error\n";
+            cout << "Connection error. errno: " << errno << endl;
             return -1;
         }
 
