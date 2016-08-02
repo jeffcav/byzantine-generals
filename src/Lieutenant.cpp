@@ -9,6 +9,8 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
+#include <fcntl.h>
+#include <sys/select.h>
 #include "Lieutenant.h"
 
 extern int BYZ_RUNLOCAL;
@@ -40,7 +42,7 @@ void Lieutenant::run()
 
     Message m(GeneralIdentity(0), attack);
     Command cmd = decide(numberOfTraitors, m);
-    cout << (cmd==attack?"Attack!":"Retreat!") << endl;
+    cout << (cmd==attack?"Attack!":"Retreat!");
 }
 
 Command Lieutenant::decide(int round, Message message) {
@@ -320,6 +322,7 @@ int Lieutenant::connectToGenerals()
 {
     int sock;
     int port;
+    int flags;
     socklen_t len;
     string ip, prefix;
     struct sockaddr_in addr;
@@ -335,7 +338,7 @@ int Lieutenant::connectToGenerals()
     for (int host = 1; host <= myID.name; host++) {
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (sock <= 0) {
-            cout << "Error opening socket\n";
+            cout << "Could not open socket\n";
             return -1;
         }
 
@@ -345,12 +348,23 @@ int Lieutenant::connectToGenerals()
         port = 15000 + host;
         addr = buildSockAddr(&ip, port);
 
-	cout << ip << ":" << port << endl;
+        flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
-        if (connect(sock, (struct sockaddr*) &addr, len) < 0) {
-            cout << "Error connecting\n";
+        connect(sock, (struct sockaddr*) &addr, len);
+        
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(sock, &fds);
+        select(sock + 1, NULL, &fds, NULL, NULL);
+
+        if (select < 0) {
+            cout << "Could not connect\n";
             return -1;
         }
+
+        flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags&~O_NONBLOCK);
 
         if (setsockopt(sock,
                        SOL_SOCKET,

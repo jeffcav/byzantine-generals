@@ -3,7 +3,6 @@ from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
 from mininet.log import setLogLevel
 from mininet.node import OVSController
-from time import sleep
 
 class CustomTopo(Topo):
     def __init__(self, n_generals):
@@ -17,8 +16,6 @@ class CustomTopo(Topo):
             host = self.addHost(hostname)
 
             self.addLink(host, s1)
-
-            print hostname + " added"
 
 topos = {'customtopo': (lambda: CustomTopo())}
 
@@ -43,7 +40,13 @@ def launch(n_generals, n_traitors):
         hostname = "h" + str(i)
         ne = net.get(hostname)
 
-        print "starting " + hostname
+        description = ""
+        if i is n_generals:
+            description = " (commander general)"
+        else:
+            description = " (lieutenant general)"
+            
+        print "starting " + hostname + description
 
         #Commander has id 0
         general_id = i % n_generals
@@ -55,7 +58,6 @@ def launch(n_generals, n_traitors):
         ne.cmd(command)
 
         pids[i-1] = int(ne.cmd('echo $!'))
-        sleep(1)
 
     for i in range(1, n_generals):
         hostname = "h" + str(i)
@@ -69,5 +71,5 @@ def launch(n_generals, n_traitors):
 
 if __name__ == '__main__':
     # Tell mininet to print useful information
-    setLogLevel('info')
+    #setLogLevel('info')
     launch(10, 3)
