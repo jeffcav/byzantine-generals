@@ -41,8 +41,9 @@ void Lieutenant::run()
     OM(numberOfGenerals, numberOfTraitors, numberOfTraitors);
 
     Message m(GeneralIdentity(0), attack);
+
     Command cmd = decide(numberOfTraitors, m);
-    cout << (cmd==attack?"Attack!":"Retreat!");
+    cout << endl << "Decision: " << (cmd==attack?"Attack!":"Retreat!");
 }
 
 Command Lieutenant::decide(int round, Message message) {
@@ -94,12 +95,14 @@ Message Lieutenant::receiveMessage(GeneralAddress general)
 {
     int retval;
     size_t count;
-    char buffer[MSG_MAXBUFLEN];
+    char buffer[MSG_MAXBUFLEN]; //TODO: optimize this
     uint16_t pathlen;
 
     fd_set fds;
     struct timeval tv;
 
+    cout << "Receiving message from " << general.id.name << "...";
+ 
     tv.tv_sec = 15;
     tv.tv_usec = 0;
 
@@ -228,11 +231,16 @@ void Lieutenant::sendMessage(GeneralAddress general, Message msg)
 {
     ssize_t count;
     char buffer[msg.size()];
+
+    cout << "Sending message to " << general.id.name << "...";
+
     msg.serialize(buffer);
 
     count = send(general.sock, buffer, (size_t) msg.size(), 0);
     if (count < msg.size())
         cout << "Error sending message\n";
+
+    cout << " Success.\n";
 }
 
 
@@ -314,7 +322,7 @@ void Lieutenant::openServerSocket()
     retval = listen(this->serverSock, this->numberOfGenerals);
     if (retval < 0) {
         perror("listen\n");
-	exit(1);
+    	exit(1);
     }
 }
 
@@ -324,6 +332,7 @@ int Lieutenant::connectToGenerals()
     int port;
     int flags;
     socklen_t len;
+    bool connected;
     string ip, prefix;
     struct sockaddr_in addr;
     struct linger lngr;
@@ -336,6 +345,8 @@ int Lieutenant::connectToGenerals()
     len = sizeof(struct sockaddr_in);
 
     for (int host = 1; host <= myID.name; host++) {
+        cout << "Connecting to " << host << "... ";
+
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (sock <= 0) {
             cout << "Could not open socket\n";
@@ -351,16 +362,22 @@ int Lieutenant::connectToGenerals()
         flags = fcntl(sock, F_GETFL, 0);
         fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
-        connect(sock, (struct sockaddr*) &addr, len);
+        connected = false;
+        while (connected == false) {
+            connect(sock, (struct sockaddr*) &addr, len);
         
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(sock, &fds);
-        select(sock + 1, NULL, &fds, NULL, NULL);
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(sock, &fds);
+            select(sock + 1, NULL, &fds, NULL, NULL);
 
-        if (select < 0) {
-            cout << "Could not connect\n";
-            return -1;
+            if (select < 0) {
+                cout << "Error connecting)\n";
+                return -1;
+            }
+
+            if (errno != EINPROGRESS && errno != ECONNREFUSED)
+                connected = true;
         }
 
         flags = fcntl(sock, F_GETFL, 0);
@@ -371,7 +388,7 @@ int Lieutenant::connectToGenerals()
                        SO_LINGER,
                        &lngr,
                        sizeof(struct linger))) {
-            perror("Could not set linger\n");
+            perror("Could not set linger time\n");
             exit(1);
         }
 
@@ -388,7 +405,7 @@ int Lieutenant::connectToGenerals()
             generals.push_back(newGeneral);
         }
 
-        cout << "Connection to " << host << endl;
+        cout << " OK" << endl;
     }
 
     return 0;

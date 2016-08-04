@@ -26,12 +26,12 @@ void Commander::discoverGenerals()
     string prefix = "10.0.0.";
     uint32_t myID = 0;
     string ip;
+    bool connOK;
 
     ip = "127.0.0.1";
     for (int host = 1; host < numberOfGenerals; host++) {
         struct GeneralAddress general;
         struct sockaddr_in caddr;
-
 
         if (!BYZ_RUNLOCAL)
             ip = prefix + to_string(host);
@@ -47,14 +47,17 @@ void Commander::discoverGenerals()
         caddr.sin_family = AF_INET;
 
         inet_aton(ip.c_str(), &caddr.sin_addr);
+        
+        connOK = false;
+        while (connOK == false) {
+            if (connect(general.sock, (struct sockaddr*) &caddr, len) == 0)
+                connOK = true;
+        }
 
-        if (connect(general.sock, (struct sockaddr*) &caddr, len) < 0)
-            cout << "Error connecting to " << host << endl;
-
-        if (send(general.sock, (char*) &myID, 4, 0) < 4)
+       if (send(general.sock, (char*) &myID, 4, 0) < 4)
             cout << "Error sending to " << host << endl;
-
-        cout << "Connected to " << ip << endl;
+       
+       cout << "Connected to " << ip << endl;
     }
     cout << endl;
 }
