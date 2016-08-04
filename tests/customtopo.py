@@ -3,6 +3,7 @@ from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
 from mininet.log import setLogLevel
 from mininet.node import OVSController
+import time
 
 class CustomTopo(Topo):
     def __init__(self, n_generals):
@@ -69,7 +70,20 @@ def launch(n_generals, n_traitors):
     for i in range(n_traitors + 1, n_generals):
         print "LT " + str(i) + ": " + decision(str(i))
 
+def test_correctness(m):
+    for i in range(m+1, 3*m+2):
+        launch(i, m)
+
 if __name__ == '__main__':
     # Tell mininet to print useful information
     #setLogLevel('info')
-    launch(10, 3)
+    
+    start = time.time()
+    test_correctness(2)
+    elapsed = time.time() - start
+    print elapsed
+
+    start = time.time()
+    test_correctness(3)
+    elapsed = time.time() - start
+    print elapsed
