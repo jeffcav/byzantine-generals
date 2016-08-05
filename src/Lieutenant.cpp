@@ -42,8 +42,13 @@ void Lieutenant::run()
 
     Message m(GeneralIdentity(0), attack);
 
-    Command cmd = decide(numberOfTraitors, m);
-    cout << endl << "Decision: " << (cmd==attack?"Attack!":"Retreat!");
+    try {
+        Command cmd = decide(numberOfTraitors, m);
+        cout << endl << "Decision: " << (cmd==attack?"Attack!":"Retreat!");
+    }
+    catch(...) {
+        cout << "Deciding... Out of memory\n";
+    }
 }
 
 Command Lieutenant::decide(int round, Message message) {
@@ -151,7 +156,13 @@ vector<Message> Lieutenant::receiveMessages(int round)
         commander = GeneralAddress(GeneralIdentity(0), commanderSock);
 
         msg = receiveMessage(commander);
-        msgs.push_back(msg);
+
+        try {
+            msgs.push_back(msg);
+        }
+        catch(...) {
+            cout << "Receiving message... Out of memory\n";
+        }
     }
     else {
         nMessages = 1;
@@ -172,7 +183,13 @@ vector<Message> Lieutenant::receiveMessages(int round)
             }
 
             msg = receiveMessage(*general);
-            msgs.push_back(msg);
+
+            try {
+                msgs.push_back(msg);
+            }
+            catch(...) {
+                cout << "Receiving message... Out of memory\n";
+            }
         }
 
     }
@@ -188,8 +205,15 @@ void Lieutenant::actAsCommander(vector<Message> msgs)
 
     // Try to append our ID in the path of each message
     for (int i = 0; i < msgs.size(); i++) {
-        if (msgs[i].appendSource(myID))
-            remainingMessages.push_back(msgs[i]);
+        if (msgs[i].appendSource(myID)) {
+            try {
+                remainingMessages.push_back(msgs[i]);
+            }
+            catch (...) {
+                cout << "Acting like a commander... Out of memory\n";
+            }
+
+        }
     }
 
     // Send messages to all lieutenants
@@ -200,7 +224,6 @@ void Lieutenant::actAsCommander(vector<Message> msgs)
     //send messages also to myself
     GeneralAddress myself(myID, sendSock);
     sendMessages(myself, remainingMessages);
-
 }
 
 void Lieutenant::sendMessages(GeneralAddress general, vector<Message> msgs)
@@ -402,7 +425,13 @@ int Lieutenant::connectToGenerals()
         }
         else {
             GeneralAddress newGeneral(GeneralIdentity(host), sock);
-            generals.push_back(newGeneral);
+
+            try {
+                generals.push_back(newGeneral);
+            }
+            catch (...) {
+                cout << "Connecting to general... Out of memory.";
+            }
         }
 
         cout << " OK" << endl;
@@ -456,7 +485,13 @@ int Lieutenant::waitNewGeneralsConnections()
             cout << "Connection from " << generalID << endl;
 
             GeneralAddress newGeneral(GeneralIdentity(generalID), sock);
-            generals.push_back(newGeneral);
+
+            try {
+                generals.push_back(newGeneral);
+            }
+            catch (...) {
+                cout << "Connection from general... Out of memory\n";
+            }
         }
         else {
             recvSock = sock;
