@@ -70,20 +70,41 @@ def launch(n_generals, n_traitors):
     for i in range(n_traitors + 1, n_generals):
         print "LT " + str(i) + ": " + decision(str(i))
 
-def test_correctness(m):
+'''
+Uses brute force to find the minimum number of generals
+given m traitors and prints the elapsed time.
+'''
+def find_first_agreement(m):
+    start = time.time()
+
+    print "Finding first agreement for M = " + str(m) + "\n"
     for i in range(m+1, 3*m+2):
         launch(i, m)
+
+    elapsed = time.time() - start
+    print "Agreement reached in " + str(elapsed) + " seconds\n"
+
+'''
+Finds the elapsed time for the byzantine generals
+problem given n generals and m traitors
+'''
+def time_for_agreement(m):
+    start = time.time()
+
+    n = (3 * m) + 1
+
+    print "Finding agreement with " + str(n) + " generals and " + str(m) + " traitors.\n"
+    launch(n, m)
+
+    elapsed = time.time() - start
+    print "Agreement was reached in " + str(elapsed) + " seconds\n"
 
 if __name__ == '__main__':
     # Tell mininet to print useful information
     #setLogLevel('info')
     
-    start = time.time()
-    test_correctness(2)
-    elapsed = time.time() - start
-    print elapsed
+    for i in range(2, 5):
+        find_first_agreement(i)
 
-    start = time.time()
-    test_correctness(3)
-    elapsed = time.time() - start
-    print elapsed
+    for i in range(1, 5):
+        time_for_agreement(i)
