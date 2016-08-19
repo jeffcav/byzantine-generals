@@ -4,6 +4,8 @@ from mininet.util import dumpNodeConnections
 from mininet.log import setLogLevel
 from mininet.node import OVSController
 import time
+from matplotlib import pyplot as plt
+import numpy as np
 
 class CustomTopo(Topo):
     def __init__(self, n_generals):
@@ -46,8 +48,8 @@ def launch(n_generals, n_traitors):
             description = " (commander general)"
         else:
             description = " (lieutenant general)"
-            
-        print "starting " + hostname + description
+
+        print ("starting " + hostname + description)
 
         #Commander has id 0
         general_id = i % n_generals
@@ -68,7 +70,7 @@ def launch(n_generals, n_traitors):
     net.stop()
 
     for i in range(n_traitors + 1, n_generals):
-        print "LT " + str(i) + ": " + decision(str(i))
+        print ("LT " + str(i) + ": " + decision(str(i)))
 
 '''
 Uses brute force to find the minimum number of generals
@@ -77,12 +79,25 @@ given m traitors and prints the elapsed time.
 def find_first_agreement(m):
     start = time.time()
 
-    print "Finding first agreement for M = " + str(m) + "\n"
+    print ("Finding first agreement for M = " + str(m) + "\n")
     for i in range(m+1, 3*m+2):
         launch(i, m)
 
     elapsed = time.time() - start
-    print "Agreement reached in " + str(elapsed) + " seconds\n"
+    print ("Agreement reached in " + str(elapsed) + " seconds\n")
+    return elapsed
+
+def find_first_agreement2(n_traitors):
+
+    max_generals = (3* n_traitors) + 4
+    for n_generals in range(n_traitors, max_generals + 1):
+        start = time.time()
+
+        launch(n_generals, n_traitors)
+
+        elapsed = time.time() - start
+        print ("Agreement reached in " + str(elapsed) + " seconds\n")
+        yield elapsed
 
 '''
 Finds the elapsed time for the byzantine generals
@@ -93,18 +108,112 @@ def time_for_agreement(m):
 
     n = (3 * m) + 1
 
-    print "Finding agreement with " + str(n) + " generals and " + str(m) + " traitors.\n"
+    print ("Finding agreement with " + str(n) + " generals and " + str(m) + " traitors.\n")
     launch(n, m)
 
     elapsed = time.time() - start
-    print "Agreement was reached in " + str(elapsed) + " seconds\n"
+    print ("Agreement was reached in " + str(elapsed) + " seconds\n")
+
+    return elapsed
+
+def draw_init(x):
+    plt.xticks(x)
+
+def draw_add(x, y, draw_value):
+    plt.plot(x, y)
+
+    if draw_value is True:
+        for i, j in zip(x, y):
+            plt.text(i, j, str(j))
+
+def draw_save(filename):
+    plt.ylabel('time (s)')
+    plt.xlabel('number of generals')
+
+    #plt.show()
+
+    plt.savefig(filename)
+    plt.clf()
+
+def draw(x, y, name):
+    plt.xticks(x)
+    plt.plot(x, y)
+    plt.ylabel('time (s)')
+    plt.xlabel('number of traitors')
+    for i, j in zip(x, y):
+        plt.text(i, j, str(j))
+
+    plt.savefig(name)
+    plt.clf()
 
 if __name__ == '__main__':
     # Tell mininet to print useful information
     #setLogLevel('info')
-    
-    for i in range(2, 5):
-        find_first_agreement(i)
 
-    for i in range(1, 5):
-        time_for_agreement(i)
+    '''
+    Experiment 1
+    '''
+
+    '''
+    min_traitors = 2
+    max_traitors = 4
+
+    x = range(min_traitors, max_traitors + 1)
+    y = []
+
+    for i in x:
+        elapsed_time = find_first_agreement(i)
+        y.append(elapsed_time)
+
+    draw(x, y, "experiment1.png")
+    '''
+    '''
+    Experiment 2
+    '''
+    '''
+    min_traitors = 1
+    max_traitors = 4
+
+    x = range(min_traitors, max_traitors + 1)
+    y = []
+
+    for i in x:
+        elapsed_time = time_for_agreement(i)
+        y.append(elapsed_time)
+
+    draw(x, y, "experiment2.png")
+    '''
+    '''
+    Experiment 3
+    '''
+    min_traitors = 2
+    max_traitors = 4
+
+    z = []
+    rounds = range(min_traitors, max_traitors + 1)
+    for n_traitors in rounds:
+
+        n_generals = (3 * n_traitors) + 4
+
+        x = range(n_traitors, n_generals + 1)
+        y = []
+
+        draw_init(x)
+
+        for elapsed_time in find_first_agreement2(n_traitors):
+            y.append(elapsed_time)
+
+        z.append(y)
+
+        draw_add(x, y, True)
+        draw_save("m" + str(n_traitors) + ".png")
+
+
+
+    k = 0
+    for i in rounds:
+        x = range(i, (3 * i) + 5)
+        draw_add(x, z[k], False)
+        k+=1
+
+    draw_save("experiment3.png")
