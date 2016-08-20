@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
         #plotting execution times and saving into a file
         draw_add(generals_range, elapsed_times, True)
-        draw_save("m" + str(n_traitors) + ".png", False)
+        draw_save("tests/img/m" + str(n_traitors) + ".png", False)
 
 
     #Creating a graph which draws all other tests togheter, helping with comparisons
@@ -169,4 +169,4 @@ if __name__ == '__main__':
         draw_add(generals_range, all_elapsed_times[n_traitors-1], False)
         n_traitors += 1
 
-    draw_save("experiment.png", True)
+    draw_save("tests/img/experiment.png", True)

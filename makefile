@@ -12,9 +12,10 @@ all: makedirs
 makedirs:
 	mkdir -p bin
 	mkdir -p log
+	mkdir -p tests/img
 
 run:
 	sudo python tests/customtopo.py
 
 clean:
-	rm -rf *.o log/ bin/ || true
+	rm -rf *.o log/ bin/ tests/img/ || true
