@@ -5,8 +5,12 @@ from mininet.log import setLogLevel
 from mininet.node import OVSController
 import time
 from matplotlib import pyplot as plt
-import numpy as np
 
+'''
+Creates a star topology in mininet.
+Even though there are built-in classes for this, I wanted to learn
+how to do it by hand =)
+'''
 class CustomTopo(Topo):
     def __init__(self, n_generals):
         Topo.__init__(self)
@@ -22,6 +26,9 @@ class CustomTopo(Topo):
 
 topos = {'customtopo': (lambda: CustomTopo())}
 
+'''
+Reads the log file created by each general and returns its final decision as a string
+'''
 def decision(i):
     with open("log/gen" + i + ".out", "rb") as f:
         first = f.readline()      # Read the first line.
@@ -31,7 +38,11 @@ def decision(i):
         last = f.readline()       # Read last line.
         return last
 
-def launch(n_generals, n_traitors):
+'''
+Instanciates a mininet network with given parameters and runs
+the byzantine generals process in each container
+'''
+def launch_generals_network(n_generals, n_traitors):
     topo = CustomTopo(n_generals)
     net = Mininet(topo = topo, controller = OVSController)
     net.start()
@@ -48,8 +59,6 @@ def launch(n_generals, n_traitors):
             description = " (commander general)"
         else:
             description = " (lieutenant general)"
-
-        print ("starting " + hostname + description)
 
         #Commander has id 0
         general_id = i % n_generals
@@ -73,147 +82,91 @@ def launch(n_generals, n_traitors):
         print ("LT " + str(i) + ": " + decision(str(i)))
 
 '''
-Uses brute force to find the minimum number of generals
-given m traitors and prints the elapsed time.
+Creates networks varying the number of generals based on a given
+ammount of traitors
 '''
-def find_first_agreement(m):
-    start = time.time()
+def create_test_instances(n_traitors):
 
-    print ("Finding first agreement for M = " + str(m) + "\n")
-    for i in range(m+1, 3*m+2):
-        launch(i, m)
-
-    elapsed = time.time() - start
-    print ("Agreement reached in " + str(elapsed) + " seconds\n")
-    return elapsed
-
-def find_first_agreement2(n_traitors):
-
-    max_generals = (3* n_traitors) + 4
+    max_generals = calculate_max_generals(n_traitors)
     for n_generals in range(n_traitors, max_generals + 1):
         start = time.time()
 
-        launch(n_generals, n_traitors)
+        print ("Launching " + str(n_generals) + " generals with " + str(n_traitors) + " traitors...")
+
+        launch_generals_network(n_generals, n_traitors)
 
         elapsed = time.time() - start
         print ("Agreement reached in " + str(elapsed) + " seconds\n")
         yield elapsed
 
 '''
-Finds the elapsed time for the byzantine generals
-problem given n generals and m traitors
+Graph plotting utilities
 '''
-def time_for_agreement(m):
-    start = time.time()
-
-    n = (3 * m) + 1
-
-    print ("Finding agreement with " + str(n) + " generals and " + str(m) + " traitors.\n")
-    launch(n, m)
-
-    elapsed = time.time() - start
-    print ("Agreement was reached in " + str(elapsed) + " seconds\n")
-
-    return elapsed
-
 def draw_init(x):
     plt.xticks(x)
 
-def draw_add(x, y, draw_value):
+def draw_add(x, y, write_value):
     plt.plot(x, y)
 
-    if draw_value is True:
+    if write_value is True:
         for i, j in zip(x, y):
             plt.text(i, j, str(j))
 
-def draw_save(filename):
+def draw_save(filename, show_draw):
     plt.ylabel('time (s)')
     plt.xlabel('number of generals')
 
-    #plt.show()
+    if show_draw is True:
+        plt.show()
 
     plt.savefig(filename)
     plt.clf()
 
-def draw(x, y, name):
-    plt.xticks(x)
-    plt.plot(x, y)
-    plt.ylabel('time (s)')
-    plt.xlabel('number of traitors')
-    for i, j in zip(x, y):
-        plt.text(i, j, str(j))
+'''
+Returns a maximum suggested number of generals for a test.
 
-    plt.savefig(name)
-    plt.clf()
+This function must return at least a value of (3*m)+1, but
+as we fixed m={1, 2, 3, 4}, 16 is aways a good value and
+being fixed helps us doing comparisons.
+'''
+def calculate_max_generals(m):
+    return 16
 
 if __name__ == '__main__':
     # Tell mininet to print useful information
     #setLogLevel('info')
 
-    '''
-    Experiment 1
-    '''
-
-    '''
-    min_traitors = 2
-    max_traitors = 4
-
-    x = range(min_traitors, max_traitors + 1)
-    y = []
-
-    for i in x:
-        elapsed_time = find_first_agreement(i)
-        y.append(elapsed_time)
-
-    draw(x, y, "experiment1.png")
-    '''
-    '''
-    Experiment 2
-    '''
-    '''
     min_traitors = 1
     max_traitors = 4
 
-    x = range(min_traitors, max_traitors + 1)
-    y = []
+    all_elapsed_times = []
+    traitors_range = range(min_traitors, max_traitors + 1)
+    for n_traitors in traitors_range:
+        n_generals = calculate_max_generals(n_traitors)
 
-    for i in x:
-        elapsed_time = time_for_agreement(i)
-        y.append(elapsed_time)
+        #variables for plotting
+        generals_range = range(n_traitors, n_generals + 1)
+        elapsed_times = []
+        draw_init(generals_range)
 
-    draw(x, y, "experiment2.png")
-    '''
-    '''
-    Experiment 3
-    '''
-    min_traitors = 2
-    max_traitors = 4
+        #runnung tests and measuring their execution times
+        for elapsed_time in create_test_instances(n_traitors):
+            elapsed_times.append(elapsed_time)
 
-    z = []
-    rounds = range(min_traitors, max_traitors + 1)
-    for n_traitors in rounds:
+        all_elapsed_times.append(elapsed_times)
 
-        n_generals = (3 * n_traitors) + 4
-
-        x = range(n_traitors, n_generals + 1)
-        y = []
-
-        draw_init(x)
-
-        for elapsed_time in find_first_agreement2(n_traitors):
-            y.append(elapsed_time)
-
-        z.append(y)
-
-        draw_add(x, y, True)
-        draw_save("m" + str(n_traitors) + ".png")
+        #plotting execution times and saving into a file
+        draw_add(generals_range, elapsed_times, True)
+        draw_save("m" + str(n_traitors) + ".png", False)
 
 
+    #Creating a graph which draws all other tests togheter, helping with comparisons
+    n_traitors = 1
+    draw_init(range(1, calculate_max_generals(max_traitors)+1))
 
-    k = 0
-    for i in rounds:
-        x = range(i, (3 * i) + 5)
-        draw_add(x, z[k], False)
-        k+=1
+    for i in traitors_range:
+        generals_range = range(i, calculate_max_generals(i)+1)
+        draw_add(generals_range, all_elapsed_times[n_traitors-1], False)
+        n_traitors += 1
 
-    draw_save("experiment3.png")
+    draw_save("experiment.png", True)
